@@ -9,7 +9,8 @@
     "hello": "tsx src/hello.ts",
     "test": "playwright test",
     "test:smoke": "playwright test --project=smoke",
-    "test:engine": "playwright test --project=engine"
+    "test:engine": "playwright test --project=engine",
+    "check:readme": "node scripts/check-readme-fresh.mjs"
   },
   "keywords": [],
   "author": "",

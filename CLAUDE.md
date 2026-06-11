@@ -139,11 +139,12 @@ When wrapping a session, spawn Performance Analyst and Security Analyst as backg
 
 After any major change, update before the session ends:
 
-1. **`.notes/handoff.md`** *(private, gitignored)* — current state, what changed this session, what's next
-2. **`backlog.md`** — move completed items to Done, add new items discovered during work
-3. **`architecture.md`** — new design decisions, updated file map
-4. **`docs/case-studies/`** *(public, when useful)* — case studies for patterns discovered, iteration loops, decisions worth documenting
-5. **`.notes/drafts/`** *(private, gitignored, when useful)* — LinkedIn / blog drafts per session. Style: measured optimism, personal reflection, ends with a question.
+1. **`README.md`** — keep it from falling behind. When you ship a **user-facing feature**, update: the **tests badge** (`tests-N_passing`), the **LOC line**, the **Features-at-a-glance table** (+ a short `### section` so the anchor link works), and the **"What's on the backlog"** section. The mechanical part is guarded: `npm run check:readme` exits non-zero if the test badge ≠ the actual test count — run it before opening a PR (it's also wired as a Stop hook when present in `.claude/settings.json`).
+2. **`.notes/handoff.md`** *(private, gitignored)* — current state, what changed this session, what's next
+3. **`backlog.md`** — move completed items to Done, add new items discovered during work
+4. **`architecture.md`** — new design decisions, updated file map
+5. **`docs/case-studies/`** *(public, when useful)* — case studies for patterns discovered, iteration loops, decisions worth documenting
+6. **`.notes/drafts/`** *(private, gitignored, when useful)* — LinkedIn / blog drafts per session. Style: measured optimism, personal reflection, ends with a question.
 
 ### What's private vs public
 The `.notes/` directory is gitignored. Anything in there stays on your disk

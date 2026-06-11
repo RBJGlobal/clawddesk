@@ -3,11 +3,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Agent SDK](https://img.shields.io/badge/built_on-Claude_Agent_SDK-8b9eff)](https://code.claude.com/docs/en/agent-sdk/overview)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ESM-3178c6)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-35_passing-6ee7b7)](./tests)
+[![Tests](https://img.shields.io/badge/tests-68_passing-6ee7b7)](./tests)
 
-A small, hackable **multi-agent dashboard** built directly on Anthropic's official [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview). Four built-in specialists plus **unlimited custom agents** you spawn from the sidebar, each with its own system prompt, tool allowlist, and model. A router that delegates to specialists. **Durable SQLite-backed task queue** with atomic checkout, lease-based crash recovery, and Haiku auto-routing. **Per-agent budget caps** (cost + rate) enforced before every SDK call. Token-by-token streaming. Folder scoping. `@file` and `/command` autocomplete. Persistent SQLite memory. **Conversation history with restore-and-resume.** OAuth-aware **cost & token tracking.** Markdown / JSON conversation export. Settings UI for integrations. Voice I/O via [WhisprDesk](https://whisprdesk.com/).
+A small, hackable **multi-agent dashboard** built directly on Anthropic's official [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview). Four built-in specialists plus **unlimited custom agents** you spawn from the sidebar, each with its own system prompt, tool allowlist, and model. A router that delegates to specialists. **Durable SQLite-backed task queue** with atomic checkout and lease-based crash recovery. **Cron-style scheduler** that wakes agents on a schedule. **Per-task approval gates** that pause dangerous tools for sign-off. **Per-agent budget caps** (cost + rate) enforced before every SDK call. **Context pins**, **MCP servers**, and **Skills** configurable per agent. A **Telegram bridge** so you can drive the same agents from your phone. Token-by-token streaming, folder scoping, `@file` / `/command` autocomplete, persistent SQLite memory, conversation history with restore-and-resume, OAuth-aware cost tracking, Markdown / JSON export, a ⌘K command palette, and voice I/O via [WhisprDesk](https://whisprdesk.com/).
 
-All in ~7,500 lines of hand-written code — because most of the work is already inside the SDK.
+All in ~13,900 lines of hand-written code across `src/`, `public/`, and `tests/` — because most of the engine work is already inside the SDK.
 
 ![Command Center — overview](docs/screenshots/01-overview.png)
 
@@ -39,7 +39,13 @@ Each feature maps to **one or two options** on the SDK's `query()` call. Reading
 | [Per-agent model selection](#per-agent-model-selection) | `model: "claude-opus-4-8" \| "claude-sonnet-4-6" \| "claude-haiku-4-5"` |
 | [Task queue with auto-routing](#task-queue-with-auto-routing) | One-shot Haiku `query()` as a classifier |
 | [Durable task queue (SQLite + atomic checkout)](#durable-task-queue) | Tasks survive restart; lease-based crash recovery; concurrent-safe checkout |
+| [Cron-style scheduler](#scheduler) | `node`-side tick loop fires `query()` on a cron; OAuth-rotation healthcheck |
+| [Per-task approval gates](#approval-gates) | `PreToolUse` hook awaits operator approve/reject before dangerous tools run |
 | [Budget caps (CostGuard)](#budget-caps-costguard) | Preflight `check()` before every `query()`; cost cap + rate cap; OAuth-aware |
+| [Context pins](#context-pins) | Per-agent file/snippet auto-injected into the system prompt; files re-read live |
+| [MCP servers](#mcp-servers) | Per-agent stdio/http/sse MCP servers → `options.mcpServers`; tools light up |
+| [Skills](#skills) | Per-agent toggle of `.claude/skills/*` via `settingSources` + `skills` filter |
+| [Telegram bridge](#telegram-bridge) | Long-poll listener routes DMs to the same agents; allowlist-gated |
 | [Markdown rendering](#markdown-rendering) | Not SDK — `marked` + `DOMPurify` + `highlight.js` on completed replies |
 | [Persistent memory (SQLite)](#persistent-memory-sqlite) | Injected into `systemPrompt` on every call |
 | [Session history + restore](#session-history--restore) | Every conversation persisted to SQLite; click to resume any past session |
@@ -341,6 +347,46 @@ sequenceDiagram
 ```
 
 `GET /api/costguard/status?agentId=X` returns `{rateUsed, rateRemaining, costUsedThisMonth, costRemaining}` — useful for surfacing per-agent budget chips in the UI later. Hot-path overhead measured at ~7 µs p50 / ~15 µs p99, invisible against LLM latency.
+
+---
+
+### Scheduler
+
+A cron-style scheduler ([`src/scheduler.ts`](src/scheduler.ts), host-agnostic) wakes a chosen agent on a schedule. A single 30 s tick loop fires any due schedule as a normal `query()` call, routed through the durable task queue and CostGuard preflight. Schedules survive restart (SQLite `schedules` table + partial index), can be paused/resumed/run-now, and show a live "next 3 fires" preview from [`cron-parser`](https://www.npmjs.com/package/cron-parser).
+
+The novel bit vs a plain cron is **OAuth-rotation handling**: when the SDK reports the OAuth session is dead, the schedule auto-pauses (`paused_reason: 'oauth_unavailable'`) instead of looping errors at 3 AM. A 3-strike fallback auto-pauses on recurring non-OAuth failures too. Routes: `GET/POST /api/schedules`, `PATCH/DELETE /api/schedules/:id`, `POST /api/schedules/:id/{run-now,pause,resume}`, `POST /api/cron/preview`.
+
+---
+
+### Approval gates
+
+A task can be marked `requires_approval` (or its `cwd` matched against a production-marked allowlist). When the agent reaches a dangerous tool — `Bash`/`Write`/`Edit`/`WebFetch` by default, *all* tools in a production-marked folder — the SDK's `PreToolUse` hook **pauses the run** and posts a pending-approval card on the kanban with the tool name + JSON payload. The hook genuinely awaits an external Promise (no polling); you Approve or Reject, and the run resumes or aborts. A rejection reason flows back into the agent's context as a turn it can respond to.
+
+State persists in SQLite (`pending_approvals`); a boot-time sweep expires orphans from prior server processes. Routes: `GET /api/approvals`, `POST /api/approvals/:id/decide`. See [`docs/analysis/c16d-per-task-vs-per-tool.md`](docs/analysis/c16d-per-task-vs-per-tool.md) for why per-task approval is (partly) qualitatively different from per-tool.
+
+---
+
+### Context pins
+
+Pin per-agent context that's injected into the system prompt **every turn** — a **file** (re-read from disk each turn, so editing your style-doc/spec flows through live with no re-save) or a **snippet** (fixed text). File pins are size-capped (16 KB each, 32 KB total) and degrade to an inline marker if the file goes missing, so a broken pin can never break a query. Composed alongside persistent memory in `augmentedSystemPrompt()` ([`src/contextPins.ts`](src/contextPins.ts)). Routes: `GET/POST/DELETE /api/pins`. The 📌 **Pins** modal manages them per agent.
+
+---
+
+### MCP servers
+
+Connect [Model Context Protocol](https://modelcontextprotocol.io) servers to an agent and their tools light up automatically. Per-agent **stdio** (spawns a process), **http**, or **sse** (connect to a URL) configs are stored in SQLite ([`src/mcpServers.ts`](src/mcpServers.ts)) and spread into `query()`'s `mcpServers` option, with `mcp__<name>` allow-tokens appended so the tools aren't blocked by the agent's allowlist. env/header secrets are masked in the UI but used raw at runtime. A **Test** button spins one server up in isolation and reports connected/failed from the SDK's `system.init` `mcp_servers` status — without burning a model turn. Routes: `GET/POST /api/mcp`, `POST /api/mcp/:id/{enabled,test}`, `DELETE /api/mcp/:id`.
+
+---
+
+### Skills
+
+Enable [Agent Skills](https://code.claude.com/docs/en/skills) per agent. [`src/skills.ts`](src/skills.ts) scans `{cwd}/.claude/skills/*/SKILL.md` and `~/.claude/skills/*` (parsing each frontmatter), and when an agent has ≥1 skill enabled, runs its `query()` with `settingSources: ['project','user']` + a `skills` name filter. The 🧩 **Skills** modal lists discovered skills with a per-agent toggle + Rescan. Routes: `GET /api/skills`, `POST /api/skills/toggle`.
+
+---
+
+### Telegram bridge
+
+Run the same agents from your phone. A long-poll listener ([`src/telegram.ts`](src/telegram.ts), no public webhook) routes incoming DMs to the agent backend: `/comms draft an email…` targets a specific agent, plain text goes to Main. Access is gated by a **chat-ID allowlist** (empty = block all; non-allowed senders are silently dropped). Replies stream with a typing indicator and chunk at 4000 chars. The bot token + allowlist live in Settings; saving them restarts the listener live (no server bounce). Shares session state, CostGuard, and approval gates with the web UI. Routes: `GET /api/telegram/status`, `POST /api/telegram/test`.
 
 ---
 
@@ -830,27 +876,25 @@ This repo is **not** a product. If you turn it into one, switch to API keys and 
 
 ## What's on the backlog
 
-The current implementation covers F1–F7 foundation, C01–C15 (streaming, delegation, tasks, markdown, memory, slash commands, plan mode, WhisprDesk, Settings, custom agents), A1–A3 (cost tracking, session history, conversation export), and the first two sub-features of the **C16 "Autonomous Agent Firm" epic**: durable task queue (C16b) and budget caps (C16c). See [`backlog.md`](backlog.md) for the full sequential list.
+Core development is **done** — what's left is nice-to-haves. The current implementation covers F1–F7 foundation, C01–C15 (streaming, delegation, tasks, markdown, memory, slash commands, plan mode, WhisprDesk, Settings, custom agents), A1–A3 (cost tracking, session history, conversation export), the **complete C16 "Autonomous Agent Firm" epic**, the **C05 Telegram bridge**, per-agent **context pins / MCP servers / Skills**, and a **⌘K command palette**. See [`backlog.md`](backlog.md) for the full sequential list.
 
-**Active epic — C16: Autonomous Agent Firm** (Phase 2: agents that run while you sleep)
+**C16 — Autonomous Agent Firm (epic complete ✅)**
 
 | Sub-feature | Status |
 |---|---|
+| C16a Scheduler | ✅ Shipped — cron triggers + OAuth-rotation healthcheck |
 | C16b Durable task queue | ✅ Shipped — atomic checkout, lease recovery, host-agnostic primitive |
 | C16c CostGuard budget caps | ✅ Shipped — preflight `check()` with cost + rate axes, OAuth-aware |
-| **C16a Scheduler** | ⭐ Next — cron-style triggers; wires `taskQueue.checkout()` into a tick loop, OAuth-rotation healthcheck |
-| **C16d Per-task approval gates** | Pending — `requires_approval` per task, pause-and-wait at `PreToolUse` hook |
+| C16d Per-task approval gates | ✅ Shipped — `PreToolUse` hook pause/approve/reject |
 
-**Smaller items on the bench**
+**Also shipped since:** C05 Telegram bridge · Context pins · MCP config UI · Skills panel · ⌘K command palette · composer-toolbar UI refresh.
 
-- **C05 Telegram bridge** — Settings fields already live (disabled pending code). Need long-poll listener, chat-id allowlist, agent-routing.
+**Still on the bench (nice-to-haves)**
+
 - **C12 File rewind UI** — needs streaming-input refactor so the SDK `Query` object stays alive across requests and `Query.rewindFiles(userMessageId)` can fire from a button.
 - **AskUserQuestion inline UI** — surface the SDK's built-in mid-turn clarification tool as an interactive card.
-- **MCP configuration UI** — point at an external MCP server and have its tools light up for a chosen agent.
-- **Keyboard shortcuts hub** — Cmd+K agent switcher, Cmd+T tasks, Cmd+; settings.
-- **Context pinning per agent** — pin a file or snippet that auto-prepends to every turn for that agent.
-
-Further-out ideas (full list in `backlog.md` → "Future — not scheduled"): "council mode" multi-agent debate + synthesizer, multi-pane chat, hook inspector timeline, Skills panel, multiple workspaces, onboarding tour.
+- **Sub-agent depth limit** — a safety rail against runaway delegation chains.
+- Further-out ideas (full list in `backlog.md` → "Future — not scheduled"): "council mode" multi-agent debate + synthesizer, multi-pane chat, hook inspector timeline, multiple workspaces, onboarding tour, Electron/Tauri packaging.
 
 ---
 
