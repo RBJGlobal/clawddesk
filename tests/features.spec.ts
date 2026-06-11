@@ -1057,6 +1057,143 @@ test.describe("Command Center — new features smoke (no engine)", () => {
     await expect(page.locator("#settings-modal")).toBeVisible({ timeout: 2000 });
   });
 
+  // ----- Context pins -----
+
+  test("Pins — create snippet + file, list, and delete", async ({ request }) => {
+    const base = "http://localhost:3333";
+    // snippet
+    const snip = await (
+      await request.post(`${base}/api/pins`, {
+        data: { agentId: "comms", kind: "snippet", label: "Tone", content: "Be concise." },
+      })
+    ).json();
+    expect(snip.id).toBeTruthy();
+    expect(snip.kind).toBe("snippet");
+    expect(snip.label).toBe("Tone");
+    // file (label auto-derived from basename, ~ expanded to absolute)
+    const file = await (
+      await request.post(`${base}/api/pins`, {
+        data: { agentId: "comms", kind: "file", content: "~/some-style-doc.md" },
+      })
+    ).json();
+    expect(file.kind).toBe("file");
+    expect(file.label).toBe("some-style-doc.md");
+    expect(file.content.startsWith("/")).toBe(true); // expanded absolute
+    // list shows both
+    const list = await (await request.get(`${base}/api/pins?agentId=comms`)).json();
+    expect(list.length).toBe(2);
+    // cleanup
+    for (const p of list) await request.delete(`${base}/api/pins/${p.id}`);
+    const after = await (await request.get(`${base}/api/pins?agentId=comms`)).json();
+    expect(after.length).toBe(0);
+  });
+
+  test("Pins — validation: unknown agent and bad kind rejected", async ({ request }) => {
+    const base = "http://localhost:3333";
+    const r1 = await request.post(`${base}/api/pins`, {
+      data: { agentId: "nope", kind: "snippet", content: "x" },
+    });
+    expect(r1.status()).toBe(400);
+    const r2 = await request.post(`${base}/api/pins`, {
+      data: { agentId: "comms", kind: "bogus", content: "x" },
+    });
+    expect(r2.status()).toBe(400);
+  });
+
+  test("Pins — GET requires agentId", async ({ request }) => {
+    const r = await request.get("http://localhost:3333/api/pins");
+    expect(r.status()).toBe(400);
+  });
+
+  // ----- MCP servers -----
+
+  test("MCP — create stdio server, env value masked, toggle, delete", async ({ request }) => {
+    const base = "http://localhost:3333";
+    const created = await (
+      await request.post(`${base}/api/mcp`, {
+        data: {
+          agentId: "ops",
+          name: "testfs",
+          transport: "stdio",
+          command: "echo",
+          args: ["hello"],
+          env: { TOKEN: "supersecretvalue" },
+        },
+      })
+    ).json();
+    expect(created.name).toBe("testfs");
+    expect(created.transport).toBe("stdio");
+    // env value masked, key preserved
+    expect(created.env.TOKEN).toMatch(/^•+/);
+    expect(created.env.TOKEN).not.toContain("supersecret");
+    // toggle off
+    const tog = await request.post(`${base}/api/mcp/${created.id}/enabled`, {
+      data: { enabled: false },
+    });
+    expect(tog.ok()).toBe(true);
+    const afterToggle = await (await request.get(`${base}/api/mcp?agentId=ops`)).json();
+    expect(afterToggle.find((s: any) => s.id === created.id)?.enabled).toBe(false);
+    // delete
+    await request.delete(`${base}/api/mcp/${created.id}`);
+    const afterDel = await (await request.get(`${base}/api/mcp?agentId=ops`)).json();
+    expect(afterDel.find((s: any) => s.id === created.id)).toBeUndefined();
+  });
+
+  test("MCP — validation: bad name, http without url, stdio without command", async ({
+    request,
+  }) => {
+    const base = "http://localhost:3333";
+    const bad1 = await request.post(`${base}/api/mcp`, {
+      data: { agentId: "ops", name: "has spaces", transport: "stdio", command: "x" },
+    });
+    expect(bad1.status()).toBe(400);
+    const bad2 = await request.post(`${base}/api/mcp`, {
+      data: { agentId: "ops", name: "noUrl", transport: "http" },
+    });
+    expect(bad2.status()).toBe(400);
+    const bad3 = await request.post(`${base}/api/mcp`, {
+      data: { agentId: "ops", name: "noCmd", transport: "stdio" },
+    });
+    expect(bad3.status()).toBe(400);
+  });
+
+  // ----- Skills -----
+
+  test("Skills — discover + toggle persists per agent", async ({ request }) => {
+    const base = "http://localhost:3333";
+    const data = await (await request.get(`${base}/api/skills?agentId=main`)).json();
+    expect(Array.isArray(data.skills)).toBe(true);
+    expect(typeof data.cwd).toBe("string");
+    if (data.skills.length > 0) {
+      const name = data.skills[0].name;
+      // toggle on
+      const on = await request.post(`${base}/api/skills/toggle`, {
+        data: { agentId: "main", skillName: name, enabled: true },
+      });
+      expect(on.ok()).toBe(true);
+      const after = await (await request.get(`${base}/api/skills?agentId=main`)).json();
+      expect(after.skills.find((s: any) => s.name === name)?.enabled).toBe(true);
+      // toggle off (cleanup)
+      await request.post(`${base}/api/skills/toggle`, {
+        data: { agentId: "main", skillName: name, enabled: false },
+      });
+      const cleaned = await (await request.get(`${base}/api/skills?agentId=main`)).json();
+      expect(cleaned.skills.find((s: any) => s.name === name)?.enabled).toBe(false);
+    }
+  });
+
+  test("Skills — validation: unknown agent + missing skillName", async ({ request }) => {
+    const base = "http://localhost:3333";
+    const r1 = await request.post(`${base}/api/skills/toggle`, {
+      data: { agentId: "nope", skillName: "x", enabled: true },
+    });
+    expect(r1.status()).toBe(400);
+    const r2 = await request.post(`${base}/api/skills/toggle`, {
+      data: { agentId: "main", enabled: true },
+    });
+    expect(r2.status()).toBe(400);
+  });
+
   test("C16c — cap value of 0 is treated as unset", async ({ request }) => {
     // M2 fix: schema help text says "leave blank for no cap". 0 collapses to
     // unset to avoid the footgun where typing 0 silently bricks the agent.

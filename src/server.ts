@@ -49,8 +49,28 @@ import {
   listMemories,
   createMemory,
   deleteMemory,
-  augmentedSystemPrompt,
 } from "./memory.js";
+import {
+  augmentedSystemPrompt,
+  listPins,
+  createPin,
+  deletePin,
+} from "./contextPins.js";
+import {
+  mcpOptionsFor,
+  listMcpServersMasked,
+  createMcpServer,
+  setMcpEnabled,
+  deleteMcpServer,
+  getMcpServerRaw,
+  singleServerConfig,
+} from "./mcpServers.js";
+import {
+  discoverSkills,
+  enabledSkillsFor,
+  setSkillEnabled,
+  skillsOptionsFor,
+} from "./skills.js";
 import {
   maskedSettings,
   setSetting,
@@ -391,7 +411,8 @@ app.post("/api/chat", async (req, res) => {
     for await (const msg of query({
       prompt: message,
       options: {
-        allowedTools: agent.allowedTools,
+        ...mcpOptionsFor(agent.id, agent.allowedTools),
+        ...skillsOptionsFor(agent.id),
         systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
         resume: resumeId,
         cwd: currentCwd,
@@ -529,7 +550,8 @@ app.post("/api/chat/stream", async (req, res) => {
     for await (const msg of query({
       prompt: message,
       options: {
-        allowedTools: agent.allowedTools,
+        ...mcpOptionsFor(agent.id, agent.allowedTools),
+        ...skillsOptionsFor(agent.id),
         systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
         resume: resumeId,
         cwd: currentCwd,
@@ -675,6 +697,168 @@ app.delete("/api/memories/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// ----- Context pins (per-agent system-prompt injections) -----
+
+app.get("/api/pins", (req, res) => {
+  const agentId = (req.query.agentId as string) || "";
+  if (!agentId) return res.status(400).json({ error: "agentId required" });
+  if (!findAgent(agentId)) return res.status(400).json({ error: "unknown agent" });
+  res.json(listPins(agentId));
+});
+
+app.post("/api/pins", (req, res) => {
+  try {
+    const { agentId, label, kind, content } = req.body ?? {};
+    if (!findAgent(agentId)) {
+      return res.status(400).json({ error: "unknown agent" });
+    }
+    if (kind !== "file" && kind !== "snippet") {
+      return res.status(400).json({ error: "kind must be 'file' or 'snippet'" });
+    }
+    const pin = createPin({ agentId, label, kind, content });
+    res.json(pin);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message ?? "invalid input" });
+  }
+});
+
+app.delete("/api/pins/:id", (req, res) => {
+  const ok = deletePin(req.params.id);
+  if (!ok) return res.status(404).json({ error: "not found" });
+  res.json({ ok: true });
+});
+
+// ----- MCP servers (per-agent Model Context Protocol tool providers) -----
+
+app.get("/api/mcp", (req, res) => {
+  const agentId = (req.query.agentId as string) || "";
+  if (!agentId) return res.status(400).json({ error: "agentId required" });
+  if (!findAgent(agentId)) return res.status(400).json({ error: "unknown agent" });
+  res.json(listMcpServersMasked(agentId)); // env/header values masked
+});
+
+app.post("/api/mcp", (req, res) => {
+  try {
+    const { agentId, name, transport, command, args, env, url, headers } = req.body ?? {};
+    if (!findAgent(agentId)) {
+      return res.status(400).json({ error: "unknown agent" });
+    }
+    const server = createMcpServer({
+      agentId,
+      name,
+      transport,
+      command,
+      args: Array.isArray(args) ? args : undefined,
+      env: env && typeof env === "object" ? env : undefined,
+      url,
+      headers: headers && typeof headers === "object" ? headers : undefined,
+    });
+    // Return the masked shape for consistency with GET. The find can't miss
+    // right after insert, but if it ever did we must NOT fall back to the raw
+    // `server` row (it carries unmasked env/header secrets) — strip them.
+    const masked = listMcpServersMasked(agentId).find((s) => s.id === server.id);
+    res.json(masked ?? { ...server, env: {}, headers: {} });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message ?? "invalid input" });
+  }
+});
+
+app.post("/api/mcp/:id/enabled", (req, res) => {
+  const enabled = !!req.body?.enabled;
+  const ok = setMcpEnabled(req.params.id, enabled);
+  if (!ok) return res.status(404).json({ error: "not found" });
+  res.json({ ok: true, enabled });
+});
+
+app.delete("/api/mcp/:id", (req, res) => {
+  const ok = deleteMcpServer(req.params.id);
+  if (!ok) return res.status(404).json({ error: "not found" });
+  res.json({ ok: true });
+});
+
+// Connection test: spin up ONE server in isolation and read its status from
+// the SDK's system.init message, then abort before any model turn runs. This
+// reports connected/failed/needs-auth + the tool list without burning tokens.
+app.post("/api/mcp/:id/test", async (req, res) => {
+  const server = getMcpServerRaw(req.params.id);
+  if (!server) return res.status(404).json({ error: "not found" });
+
+  const ac = new AbortController();
+  let status: any = null;
+  // Hard timeout: a server that connects but never emits init would otherwise
+  // hang this request forever. maxTurns:1 bounds model turns, not the pre-init
+  // wait — so guard it explicitly.
+  const timeout = setTimeout(() => ac.abort(), 10_000);
+  try {
+    for await (const msg of query({
+      prompt: "ping",
+      options: {
+        mcpServers: singleServerConfig(server),
+        allowedTools: [],
+        model: "claude-haiku-4-5",
+        abortController: ac,
+        maxTurns: 1,
+      },
+    })) {
+      const anyMsg = msg as any;
+      if (anyMsg.type === "system" && anyMsg.subtype === "init") {
+        // The SDK's init message carries `mcp_servers` (snake_case). It also
+        // includes any ambient servers from the host's Claude Code config, so
+        // filter to the one we're testing by name.
+        const list = anyMsg.mcp_servers ?? anyMsg.mcpServers ?? [];
+        status = list.find((s: any) => s.name === server.name) ?? null;
+        ac.abort(); // got what we need — don't run a model turn
+        break;
+      }
+    }
+  } catch {
+    // Abort throws after we break (or on timeout) — that's expected. Only
+    // surface a real error if we never captured a status.
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!status) {
+    return res.json({
+      name: server.name,
+      status: "failed",
+      error: "no status reported by the SDK (server may have failed to start)",
+    });
+  }
+  res.json({
+    name: status.name ?? server.name,
+    status: status.status,
+    error: status.error,
+    tools: (status.tools ?? []).map((t: any) => ({ name: t.name, description: t.description })),
+    serverInfo: status.serverInfo,
+  });
+});
+
+// ----- Skills (per-agent enablement of .claude/skills/*) -----
+
+app.get("/api/skills", (req, res) => {
+  const agentId = (req.query.agentId as string) || "";
+  if (!agentId) return res.status(400).json({ error: "agentId required" });
+  if (!findAgent(agentId)) return res.status(400).json({ error: "unknown agent" });
+  // Discover relative to the current working directory + user home.
+  const discovered = discoverSkills(currentCwd);
+  const enabled = new Set(enabledSkillsFor(agentId));
+  res.json({
+    cwd: currentCwd,
+    skills: discovered.map((s) => ({ ...s, enabled: enabled.has(s.name) })),
+  });
+});
+
+app.post("/api/skills/toggle", (req, res) => {
+  const { agentId, skillName, enabled } = req.body ?? {};
+  if (!findAgent(agentId)) return res.status(400).json({ error: "unknown agent" });
+  if (typeof skillName !== "string" || !skillName.trim()) {
+    return res.status(400).json({ error: "skillName required" });
+  }
+  setSkillEnabled(agentId, skillName.trim(), !!enabled);
+  res.json({ ok: true, enabled: !!enabled });
+});
+
 // ----- Plan mode -----
 
 app.post("/api/plan/:agentId", (req, res) => {
@@ -774,7 +958,8 @@ app.post("/api/task/:id/run", async (req, res) => {
     for await (const msg of query({
       prompt: checked.description,
       options: {
-        allowedTools: agent.allowedTools,
+        ...mcpOptionsFor(agent.id, agent.allowedTools),
+        ...skillsOptionsFor(agent.id),
         systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
         cwd: currentCwd,
         model: effectiveModel(agent.id),
@@ -1386,7 +1571,8 @@ const fireScheduledTask: OnFire = async (
     for await (const msg of query({
       prompt: ctx.prompt,
       options: {
-        allowedTools: agent.allowedTools,
+        ...mcpOptionsFor(agent.id, agent.allowedTools),
+        ...skillsOptionsFor(agent.id),
         systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
         cwd: fireCwd,
         model: effectiveModel(agent.id),
@@ -1774,7 +1960,8 @@ const onTelegramMessage = async (ctx: TelegramCtx): Promise<void> => {
     for await (const msg of query({
       prompt,
       options: {
-        allowedTools: agent.allowedTools,
+        ...mcpOptionsFor(agent.id, agent.allowedTools),
+        ...skillsOptionsFor(agent.id),
         systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
         cwd: currentCwd,
         model: effectiveModel(agent.id),
