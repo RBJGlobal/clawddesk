@@ -1169,6 +1169,18 @@ body {
 .memory-badge.preference { color: #6ee7b7; border-color: rgba(110,231,183,0.4); }
 .memory-badge.fact { color: #8b9eff; border-color: rgba(139,158,255,0.4); }
 .memory-badge.context { color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+.memory-badge.pin-file { color: #6ee7b7; border-color: rgba(110,231,183,0.4); text-transform: none; }
+.memory-badge.pin-snippet { color: #8b9eff; border-color: rgba(139,158,255,0.4); text-transform: none; }
+.pin-content-preview { font-family: "SF Mono", Menlo, monospace; font-size: 11px; word-break: break-all; }
+.memory-badge.mcp-transport { color: #c4b5fd; border-color: rgba(196,181,253,0.4); text-transform: none; }
+.mcp-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.mcp-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.mcp-test-result { font-size: 11px; color: var(--muted); }
+.mcp-test-result.ok { color: #6ee7b7; }
+.mcp-test-result.err { color: #f87171; }
+.memory-badge.skill-project { color: #6ee7b7; border-color: rgba(110,231,183,0.4); text-transform: none; }
+.memory-badge.skill-user { color: #fbbf24; border-color: rgba(251,191,36,0.4); text-transform: none; }
+.skill-toggle { margin-top: 8px; }
 .memory-scope {
   font-size: 11px;
   color: var(--muted);

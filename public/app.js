@@ -258,7 +258,26 @@ function selectAgent(id) {
   reflectPlanMode();
   renderMessages();
   renderSessionUsage();
+  refreshPinCount();
+  refreshMcpCount();
+  refreshSkillsCount();
   input.focus();
+}
+
+// Keep the header 📌 Pins badge reflecting the active agent's pin count
+// (pins are per-agent, so the count is agent-specific).
+async function refreshPinCount() {
+  const agentId = state.activeAgentId;
+  if (!agentId || !pinsCount) return;
+  try {
+    const res = await fetch(`/api/pins?agentId=${encodeURIComponent(agentId)}`);
+    if (!res.ok) return;
+    const pins = await res.json();
+    pinsCount.textContent = pins.length;
+    pinsCount.classList.toggle("has-active", pins.length > 0);
+  } catch {
+    /* noop */
+  }
 }
 
 function renderMessages() {
@@ -1278,6 +1297,574 @@ async function deleteMemory(id) {
     await fetch(`/api/memories/${id}`, { method: "DELETE" });
     state.memories = state.memories.filter((m) => m.id !== id);
     renderMemories();
+  } catch {
+    /* noop */
+  }
+}
+
+// ----- Context pins -----
+
+const pinsBtn = document.getElementById("pins-btn");
+const pinsCount = document.getElementById("pins-count");
+const pinsModal = document.getElementById("pins-modal");
+const pinsCloseBtn = document.getElementById("pins-close");
+const pinAgentSelect = document.getElementById("pin-agent");
+const pinKindSelect = document.getElementById("pin-kind");
+const pinLabel = document.getElementById("pin-label");
+const pinContent = document.getElementById("pin-content");
+const pinCreateBtn = document.getElementById("pin-create-btn");
+const pinList = document.getElementById("pin-list");
+
+state.pins = [];
+
+function closePinsModal() {
+  pinsModal.classList.add("hidden");
+  // Restore the header badge to the active agent's count (the modal may have
+  // been showing a different agent's pins).
+  refreshPinCount();
+}
+pinsBtn.addEventListener("click", openPinsModal);
+pinsCloseBtn.addEventListener("click", closePinsModal);
+pinsModal.addEventListener("click", (e) => {
+  if (e.target === pinsModal) closePinsModal();
+});
+pinCreateBtn.addEventListener("click", createPin);
+pinAgentSelect.addEventListener("change", refreshPins);
+pinKindSelect.addEventListener("change", () => {
+  pinContent.placeholder =
+    pinKindSelect.value === "file"
+      ? "~/Projects/style-guide.md  (absolute or ~ path — re-read every turn)"
+      : "Paste fixed snippet text — injected verbatim every turn";
+});
+
+function populatePinAgentSelect() {
+  // Rebuild each open so newly-created custom agents appear. Default to the
+  // currently-active agent so the common "pin to the agent I'm using" flow
+  // needs no extra click.
+  const prev = pinAgentSelect.value || state.activeAgentId;
+  pinAgentSelect.innerHTML = "";
+  for (const a of state.agents) {
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    opt.textContent = `${a.emoji} ${a.name}`;
+    pinAgentSelect.appendChild(opt);
+  }
+  if (prev && state.agents.some((a) => a.id === prev)) pinAgentSelect.value = prev;
+}
+
+async function openPinsModal() {
+  populatePinAgentSelect();
+  await refreshPins();
+  pinsModal.classList.remove("hidden");
+  pinContent.focus();
+}
+
+async function refreshPins() {
+  const agentId = pinAgentSelect.value;
+  if (!agentId) {
+    state.pins = [];
+    renderPins();
+    return;
+  }
+  try {
+    const res = await fetch(`/api/pins?agentId=${encodeURIComponent(agentId)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.pins = await res.json();
+  } catch (err) {
+    console.warn("refreshPins failed:", err);
+    state.pins = [];
+  }
+  renderPins();
+}
+
+function renderPins() {
+  pinsCount.textContent = state.pins.length;
+  pinsCount.classList.toggle("has-active", state.pins.length > 0);
+  pinList.innerHTML = "";
+  if (state.pins.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "col-empty";
+    empty.textContent = "No pins for this agent yet. Add one above.";
+    pinList.appendChild(empty);
+    return;
+  }
+  for (const p of state.pins) {
+    const li = document.createElement("li");
+    li.className = "memory-card pin-card";
+
+    const meta = document.createElement("div");
+    meta.className = "memory-meta";
+    const badge = document.createElement("span");
+    badge.className = `memory-badge pin-${p.kind}`;
+    badge.textContent = p.kind === "file" ? "📄 live file" : "✏️ snippet";
+    meta.appendChild(badge);
+    const labelEl = document.createElement("span");
+    labelEl.className = "memory-scope";
+    labelEl.textContent = p.label;
+    meta.appendChild(labelEl);
+
+    const content = document.createElement("div");
+    content.className = "memory-content pin-content-preview";
+    // For file pins show the path; for snippets show the text (truncated).
+    content.textContent =
+      p.kind === "file" ? p.content : p.content.slice(0, 240) + (p.content.length > 240 ? "…" : "");
+
+    const del = document.createElement("button");
+    del.className = "memory-delete";
+    del.title = "Remove pin";
+    del.textContent = "×";
+    del.addEventListener("click", () => deletePin(p.id));
+
+    li.append(meta, content, del);
+    pinList.appendChild(li);
+  }
+}
+
+async function createPin() {
+  const content = pinContent.value.trim();
+  if (!content) return;
+  const agentId = pinAgentSelect.value;
+  if (!agentId) {
+    alert("Pick an agent first.");
+    return;
+  }
+  pinCreateBtn.disabled = true;
+  pinCreateBtn.textContent = "Adding…";
+  try {
+    const body = {
+      agentId,
+      kind: pinKindSelect.value,
+      label: pinLabel.value.trim(),
+      content,
+    };
+    const res = await fetch("/api/pins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    pinContent.value = "";
+    pinLabel.value = "";
+    await refreshPins();
+  } catch (err) {
+    alert("Could not add pin: " + err.message);
+  } finally {
+    pinCreateBtn.disabled = false;
+    pinCreateBtn.textContent = "Add pin";
+  }
+}
+
+async function deletePin(id) {
+  try {
+    await fetch(`/api/pins/${id}`, { method: "DELETE" });
+    state.pins = state.pins.filter((p) => p.id !== id);
+    renderPins();
+  } catch {
+    /* noop */
+  }
+}
+
+// ----- MCP servers -----
+
+const mcpBtn = document.getElementById("mcp-btn");
+const mcpCount = document.getElementById("mcp-count");
+const mcpModal = document.getElementById("mcp-modal");
+const mcpCloseBtn = document.getElementById("mcp-close");
+const mcpAgentSelect = document.getElementById("mcp-agent");
+const mcpTransport = document.getElementById("mcp-transport");
+const mcpName = document.getElementById("mcp-name");
+const mcpStdioFields = document.getElementById("mcp-stdio-fields");
+const mcpUrlFields = document.getElementById("mcp-url-fields");
+const mcpCommand = document.getElementById("mcp-command");
+const mcpArgs = document.getElementById("mcp-args");
+const mcpEnv = document.getElementById("mcp-env");
+const mcpUrl = document.getElementById("mcp-url");
+const mcpHeaders = document.getElementById("mcp-headers");
+const mcpCreateBtn = document.getElementById("mcp-create-btn");
+const mcpList = document.getElementById("mcp-list");
+
+state.mcpServers = [];
+
+function closeMcpModal() {
+  mcpModal.classList.add("hidden");
+  refreshMcpCount();
+}
+mcpBtn.addEventListener("click", openMcpModal);
+mcpCloseBtn.addEventListener("click", closeMcpModal);
+mcpModal.addEventListener("click", (e) => {
+  if (e.target === mcpModal) closeMcpModal();
+});
+mcpCreateBtn.addEventListener("click", createMcpServer);
+mcpAgentSelect.addEventListener("change", refreshMcpServers);
+mcpTransport.addEventListener("change", reflectMcpTransport);
+
+function reflectMcpTransport() {
+  const isStdio = mcpTransport.value === "stdio";
+  mcpStdioFields.classList.toggle("hidden", !isStdio);
+  mcpUrlFields.classList.toggle("hidden", isStdio);
+}
+
+function populateMcpAgentSelect() {
+  const prev = mcpAgentSelect.value || state.activeAgentId;
+  mcpAgentSelect.innerHTML = "";
+  for (const a of state.agents) {
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    opt.textContent = `${a.emoji} ${a.name}`;
+    mcpAgentSelect.appendChild(opt);
+  }
+  if (prev && state.agents.some((a) => a.id === prev)) mcpAgentSelect.value = prev;
+}
+
+async function openMcpModal() {
+  populateMcpAgentSelect();
+  reflectMcpTransport();
+  await refreshMcpServers();
+  mcpModal.classList.remove("hidden");
+  mcpName.focus();
+}
+
+async function refreshMcpServers() {
+  const agentId = mcpAgentSelect.value;
+  if (!agentId) {
+    state.mcpServers = [];
+    renderMcpServers();
+    return;
+  }
+  try {
+    const res = await fetch(`/api/mcp?agentId=${encodeURIComponent(agentId)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.mcpServers = await res.json();
+  } catch (err) {
+    console.warn("refreshMcpServers failed:", err);
+    state.mcpServers = [];
+  }
+  renderMcpServers();
+}
+
+function renderMcpServers() {
+  const enabledCount = state.mcpServers.filter((s) => s.enabled).length;
+  mcpCount.textContent = enabledCount;
+  mcpCount.classList.toggle("has-active", enabledCount > 0);
+  mcpList.innerHTML = "";
+  if (state.mcpServers.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "col-empty";
+    empty.textContent = "No MCP servers for this agent yet. Add one above.";
+    mcpList.appendChild(empty);
+    return;
+  }
+  for (const s of state.mcpServers) {
+    mcpList.appendChild(renderMcpCard(s));
+  }
+}
+
+function renderMcpCard(s) {
+  const li = document.createElement("li");
+  li.className = "memory-card mcp-card";
+
+  const meta = document.createElement("div");
+  meta.className = "memory-meta";
+  const badge = document.createElement("span");
+  badge.className = "memory-badge mcp-transport";
+  badge.textContent = s.transport;
+  meta.appendChild(badge);
+  const nameEl = document.createElement("span");
+  nameEl.className = "memory-scope";
+  nameEl.textContent = s.name;
+  meta.appendChild(nameEl);
+
+  const detail = document.createElement("div");
+  detail.className = "memory-content pin-content-preview";
+  detail.textContent =
+    s.transport === "stdio"
+      ? `${s.command} ${(s.args || []).join(" ")}`.trim()
+      : s.url;
+
+  // Enable toggle
+  const toggle = document.createElement("label");
+  toggle.className = "mcp-toggle";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = !!s.enabled;
+  cb.addEventListener("change", () => toggleMcpServer(s.id, cb.checked));
+  toggle.append(cb, document.createTextNode(" enabled"));
+
+  // Actions row
+  const actions = document.createElement("div");
+  actions.className = "mcp-actions";
+  const testBtn = document.createElement("button");
+  testBtn.className = "btn-test";
+  testBtn.textContent = "Test";
+  const testResult = document.createElement("span");
+  testResult.className = "mcp-test-result";
+  testBtn.addEventListener("click", () => testMcpServer(s.id, testResult));
+  const del = document.createElement("button");
+  del.className = "memory-delete";
+  del.title = "Remove server";
+  del.textContent = "×";
+  del.addEventListener("click", () => deleteMcpServer(s.id));
+
+  actions.append(toggle, testBtn, testResult);
+  li.append(meta, detail, actions, del);
+  return li;
+}
+
+function parseKeyVals(text, sep) {
+  // sep "=" for env, ":" for headers. Returns {} on empty.
+  const out = {};
+  for (const line of (text || "").split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    const idx = t.indexOf(sep);
+    if (idx < 0) continue;
+    const k = t.slice(0, idx).trim();
+    const v = t.slice(idx + 1).trim();
+    if (k) out[k] = v;
+  }
+  return out;
+}
+
+async function createMcpServer() {
+  const agentId = mcpAgentSelect.value;
+  const name = mcpName.value.trim();
+  if (!agentId || !name) {
+    alert("Pick an agent and enter a server name.");
+    return;
+  }
+  const transport = mcpTransport.value;
+  const body = { agentId, name, transport };
+  if (transport === "stdio") {
+    body.command = mcpCommand.value.trim();
+    body.args = mcpArgs.value.trim() ? mcpArgs.value.trim().split(/\s+/) : [];
+    body.env = parseKeyVals(mcpEnv.value, "=");
+  } else {
+    body.url = mcpUrl.value.trim();
+    body.headers = parseKeyVals(mcpHeaders.value, ":");
+  }
+  mcpCreateBtn.disabled = true;
+  mcpCreateBtn.textContent = "Adding…";
+  try {
+    const res = await fetch("/api/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    mcpName.value = "";
+    mcpCommand.value = "";
+    mcpArgs.value = "";
+    mcpEnv.value = "";
+    mcpUrl.value = "";
+    mcpHeaders.value = "";
+    await refreshMcpServers();
+  } catch (err) {
+    alert("Could not add MCP server: " + err.message);
+  } finally {
+    mcpCreateBtn.disabled = false;
+    mcpCreateBtn.textContent = "Add server";
+  }
+}
+
+async function toggleMcpServer(id, enabled) {
+  try {
+    await fetch(`/api/mcp/${id}/enabled`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+    const s = state.mcpServers.find((x) => x.id === id);
+    if (s) s.enabled = enabled;
+    renderMcpServers();
+  } catch {
+    /* noop */
+  }
+}
+
+async function testMcpServer(id, resultEl) {
+  resultEl.textContent = "testing…";
+  resultEl.className = "mcp-test-result";
+  try {
+    const res = await fetch(`/api/mcp/${id}/test`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (data.status === "connected") {
+      resultEl.classList.add("ok");
+      const n = (data.tools || []).length;
+      resultEl.textContent = `✓ connected${n ? ` · ${n} tool${n > 1 ? "s" : ""}` : ""}`;
+    } else {
+      resultEl.classList.add("err");
+      resultEl.textContent = `${data.status}${data.error ? `: ${data.error}` : ""}`;
+    }
+  } catch (err) {
+    resultEl.classList.add("err");
+    resultEl.textContent = "test failed: " + err.message;
+  }
+}
+
+async function deleteMcpServer(id) {
+  if (!confirm("Remove this MCP server?")) return;
+  try {
+    await fetch(`/api/mcp/${id}`, { method: "DELETE" });
+    state.mcpServers = state.mcpServers.filter((s) => s.id !== id);
+    renderMcpServers();
+  } catch {
+    /* noop */
+  }
+}
+
+async function refreshMcpCount() {
+  const agentId = state.activeAgentId;
+  if (!agentId || !mcpCount) return;
+  try {
+    const res = await fetch(`/api/mcp?agentId=${encodeURIComponent(agentId)}`);
+    if (!res.ok) return;
+    const servers = await res.json();
+    const n = servers.filter((s) => s.enabled).length;
+    mcpCount.textContent = n;
+    mcpCount.classList.toggle("has-active", n > 0);
+  } catch {
+    /* noop */
+  }
+}
+
+// ----- Skills -----
+
+const skillsBtn = document.getElementById("skills-btn");
+const skillsCount = document.getElementById("skills-count");
+const skillsModal = document.getElementById("skills-modal");
+const skillsCloseBtn = document.getElementById("skills-close");
+const skillAgentSelect = document.getElementById("skill-agent");
+const skillsRefreshBtn = document.getElementById("skills-refresh-btn");
+const skillsList = document.getElementById("skills-list");
+const skillsCwd = document.getElementById("skills-cwd");
+
+state.skills = [];
+
+function closeSkillsModal() {
+  skillsModal.classList.add("hidden");
+  refreshSkillsCount();
+}
+skillsBtn.addEventListener("click", openSkillsModal);
+skillsCloseBtn.addEventListener("click", closeSkillsModal);
+skillsModal.addEventListener("click", (e) => {
+  if (e.target === skillsModal) closeSkillsModal();
+});
+skillAgentSelect.addEventListener("change", refreshSkills);
+skillsRefreshBtn.addEventListener("click", refreshSkills);
+
+function populateSkillAgentSelect() {
+  const prev = skillAgentSelect.value || state.activeAgentId;
+  skillAgentSelect.innerHTML = "";
+  for (const a of state.agents) {
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    opt.textContent = `${a.emoji} ${a.name}`;
+    skillAgentSelect.appendChild(opt);
+  }
+  if (prev && state.agents.some((a) => a.id === prev)) skillAgentSelect.value = prev;
+}
+
+async function openSkillsModal() {
+  populateSkillAgentSelect();
+  await refreshSkills();
+  skillsModal.classList.remove("hidden");
+}
+
+async function refreshSkills() {
+  const agentId = skillAgentSelect.value;
+  if (!agentId) {
+    state.skills = [];
+    renderSkills();
+    return;
+  }
+  try {
+    const res = await fetch(`/api/skills?agentId=${encodeURIComponent(agentId)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.skills = data.skills || [];
+    if (skillsCwd) skillsCwd.textContent = data.cwd || "…";
+  } catch (err) {
+    console.warn("refreshSkills failed:", err);
+    state.skills = [];
+  }
+  renderSkills();
+}
+
+function renderSkills() {
+  const enabledCount = state.skills.filter((s) => s.enabled).length;
+  skillsCount.textContent = enabledCount;
+  skillsCount.classList.toggle("has-active", enabledCount > 0);
+  skillsList.innerHTML = "";
+  if (state.skills.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "col-empty";
+    empty.textContent =
+      "No skills found in this folder. Drop a SKILL.md into .claude/skills/ and Rescan.";
+    skillsList.appendChild(empty);
+    return;
+  }
+  for (const s of state.skills) {
+    const li = document.createElement("li");
+    li.className = "memory-card skill-card";
+
+    const meta = document.createElement("div");
+    meta.className = "memory-meta";
+    const badge = document.createElement("span");
+    badge.className = `memory-badge skill-${s.source}`;
+    badge.textContent = s.source;
+    meta.appendChild(badge);
+    const nameEl = document.createElement("span");
+    nameEl.className = "memory-scope";
+    nameEl.textContent = s.name;
+    meta.appendChild(nameEl);
+
+    const desc = document.createElement("div");
+    desc.className = "memory-content";
+    desc.textContent = s.description || "(no description)";
+
+    const toggle = document.createElement("label");
+    toggle.className = "mcp-toggle skill-toggle";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!s.enabled;
+    cb.addEventListener("change", () => toggleSkill(s.name, cb.checked));
+    toggle.append(cb, document.createTextNode(" enabled for this agent"));
+
+    li.append(meta, desc, toggle);
+    skillsList.appendChild(li);
+  }
+}
+
+async function toggleSkill(skillName, enabled) {
+  const agentId = skillAgentSelect.value;
+  if (!agentId) return;
+  try {
+    await fetch("/api/skills/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId, skillName, enabled }),
+    });
+    const s = state.skills.find((x) => x.name === skillName);
+    if (s) s.enabled = enabled;
+    renderSkills();
+  } catch {
+    /* noop */
+  }
+}
+
+async function refreshSkillsCount() {
+  const agentId = state.activeAgentId;
+  if (!agentId || !skillsCount) return;
+  try {
+    const res = await fetch(`/api/skills?agentId=${encodeURIComponent(agentId)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const n = (data.skills || []).filter((s) => s.enabled).length;
+    skillsCount.textContent = n;
+    skillsCount.classList.toggle("has-active", n > 0);
   } catch {
     /* noop */
   }
@@ -3123,6 +3710,9 @@ function buildPaletteEntries() {
     { label: "Open Tasks", hint: "⌘⇧T", icon: "📋", run: () => document.getElementById("tasks-btn").click() },
     { label: "Open Schedules", hint: "⌘⇧S", icon: "🕒", run: () => document.getElementById("schedules-btn").click() },
     { label: "Open Memory", hint: "⌘⇧M", icon: "🧠", run: () => document.getElementById("memory-btn").click() },
+    { label: "Open Pins", hint: "", icon: "📌", run: () => document.getElementById("pins-btn").click() },
+    { label: "Open MCP servers", hint: "", icon: "🔌", run: () => document.getElementById("mcp-btn").click() },
+    { label: "Open Skills", hint: "", icon: "🧩", run: () => document.getElementById("skills-btn").click() },
     { label: "Open History", hint: "⌘⇧H", icon: "📜", run: () => document.getElementById("history-btn").click() },
     { label: "Open Settings", hint: "⌘;",  icon: "⚙️", run: () => document.getElementById("settings-btn").click() },
     { label: "New chat with current agent", hint: "", icon: "🆕", run: () => document.getElementById("reset-btn").click() },
@@ -3319,6 +3909,9 @@ document.addEventListener(
         "schedules-modal",
         "history-modal",
         "memory-modal",
+        "pins-modal",
+        "mcp-modal",
+        "skills-modal",
         "settings-modal",
         "agent-modal",
       ];

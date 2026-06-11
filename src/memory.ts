@@ -131,8 +131,7 @@ export function memoryBlockFor(agentId: string): string | null {
   ].join("\n");
 }
 
-export function augmentedSystemPrompt(agentId: string, basePrompt: string): string {
-  const block = memoryBlockFor(agentId);
-  if (!block) return basePrompt;
-  return `${basePrompt}\n\n${block}`;
-}
+// NOTE: `augmentedSystemPrompt` was moved to contextPins.ts so it can compose
+// BOTH the memory block (above) and the context-pin block without a circular
+// import. memory.ts stays the owner of `db` + `memoryBlockFor`; contextPins.ts
+// imports both from here. Import `augmentedSystemPrompt` from "./contextPins.js".
