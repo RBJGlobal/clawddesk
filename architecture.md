@@ -47,7 +47,10 @@ One OS process. No IPC, no WebSockets (yet), no secondary server. The `claude` b
 | `src/agents.ts` | Built-in agent configs (Main / Comms / Content / Ops) + MODELS table | ~120 |
 | `src/agentRegistry.ts` | Merges built-ins + custom agents at runtime; `findAgent()`, `allAgents()`, `subAgentsFor()`, `isBuiltInAgent()`, `builtInIds()` | ~40 |
 | `src/customAgents.ts` | SQLite CRUD for `custom_agents` table — create / update / delete / find | ~140 |
-| `src/memory.ts` | better-sqlite3 init (shared db at `data/lab.db`), `memories` schema, CRUD, `augmentedSystemPrompt()` injection helper | ~130 |
+| `src/memory.ts` | better-sqlite3 init (shared db at `data/lab.db`), `memories` schema + CRUD, `memoryBlockFor()` injection helper. (`augmentedSystemPrompt()` moved to `contextPins.ts` to compose memory + pins without a circular import) | ~140 |
+| `src/contextPins.ts` | `context_pins` table + CRUD; `pinnedBlockFor()` re-reads `file` pins from disk each turn (size-capped, no-throw); owns `augmentedSystemPrompt()` composing memory + pins. Imports `db`+`memoryBlockFor` from memory.ts | ~210 |
+| `src/mcpServers.ts` | `mcp_servers` table + CRUD; env/header values masked for display, raw at runtime; `mcpOptionsFor()` returns `{allowedTools (+ mcp__<name> tokens), mcpServers}` spread into every `query()`; per-agent stdio/http/sse | ~270 |
+| `src/skills.ts` | `agent_skills` table; `discoverSkills(cwd)` scans `.claude/skills/*/SKILL.md` (project + user) parsing frontmatter; `skillsOptionsFor()` returns `{settingSources, skills}` when an agent has enabled skills | ~150 |
 | `src/settings.ts` | `settings` table + schema, `configValue(dbKey, envKey)` reader with env-fallback, masked-secret API for the UI | ~150 |
 | `src/sessions.ts` | `sessions` + `session_messages` tables, transactional `appendTurn()`, auto-titling, restore helpers | ~160 |
 | `src/hello.ts` | One-shot URL summarizer (smoke test entry; `npm run hello`) | ~15 |

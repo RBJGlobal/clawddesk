@@ -65,6 +65,15 @@
           <button id="memory-btn" type="button" title="Open persistent memory">
             🧠 Memory <span id="memory-count" class="tasks-count">0</span>
           </button>
+          <button id="pins-btn" type="button" title="Context pins — files/snippets injected into this agent's prompt">
+            📌 Pins <span id="pins-count" class="tasks-count">0</span>
+          </button>
+          <button id="mcp-btn" type="button" title="MCP servers — connect external tool providers per agent">
+            🔌 MCP <span id="mcp-count" class="tasks-count">0</span>
+          </button>
+          <button id="skills-btn" type="button" title="Skills — enable .claude/skills per agent">
+            🧩 Skills <span id="skills-count" class="tasks-count">0</span>
+          </button>
           <button id="tasks-btn" type="button" title="Open task board">
             📋 Tasks <span id="tasks-count" class="tasks-count">0</span>
           </button>
@@ -256,6 +265,111 @@
             </div>
           </div>
           <ul id="memory-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="pins-modal" class="modal-overlay hidden">
+      <div class="modal modal-wide">
+        <header class="modal-header">
+          <div class="modal-title">📌 Context Pins</div>
+          <button id="pins-close" type="button">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="modal-intro">
+            Pins are injected into the selected agent's system prompt on every turn.
+            <strong>File</strong> pins are re-read from disk each turn — edit the file and
+            the agent sees the latest, no re-save needed. <strong>Snippet</strong> pins are
+            fixed text. Great for a writing-style doc, a project spec, or a glossary.
+          </p>
+          <div class="task-create">
+            <div class="task-create-row" style="margin-bottom: 6px">
+              <select id="pin-agent" title="Which agent these pins apply to"></select>
+              <select id="pin-kind" title="File path (re-read each turn) or fixed snippet text">
+                <option value="file">📄 File (live re-read)</option>
+                <option value="snippet">✏️ Snippet (fixed text)</option>
+              </select>
+            </div>
+            <input
+              id="pin-label"
+              type="text"
+              placeholder="Label (optional — defaults to filename or first line)"
+              style="width: 100%; margin-bottom: 6px"
+            />
+            <textarea
+              id="pin-content"
+              rows="2"
+              placeholder="~/Projects/style-guide.md  (or paste snippet text if Snippet is selected)"
+            ></textarea>
+            <div class="task-create-row">
+              <button id="pin-create-btn" class="btn-primary" type="button">Add pin</button>
+            </div>
+          </div>
+          <ul id="pin-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="mcp-modal" class="modal-overlay hidden">
+      <div class="modal modal-wide">
+        <header class="modal-header">
+          <div class="modal-title">🔌 MCP Servers</div>
+          <button id="mcp-close" type="button">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="modal-intro">
+            Connect <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol</a>
+            servers to an agent — their tools light up automatically when that agent runs.
+            <strong>stdio</strong> spawns a local process; <strong>http</strong>/<strong>sse</strong> connect to a URL.
+            Use <em>Test</em> to verify a server connects before relying on it.
+          </p>
+          <div class="task-create">
+            <div class="task-create-row" style="margin-bottom: 6px">
+              <select id="mcp-agent" title="Which agent gets these servers"></select>
+              <select id="mcp-transport" title="Transport type">
+                <option value="stdio">stdio (local process)</option>
+                <option value="http">http (URL)</option>
+                <option value="sse">sse (URL)</option>
+              </select>
+              <input id="mcp-name" type="text" placeholder="server name (e.g. filesystem)" style="flex:1" />
+            </div>
+            <div id="mcp-stdio-fields">
+              <input id="mcp-command" type="text" placeholder="command (e.g. npx)" style="width:100%; margin-bottom:6px" />
+              <input id="mcp-args" type="text" placeholder="args, space-separated (e.g. -y @modelcontextprotocol/server-filesystem /tmp)" style="width:100%; margin-bottom:6px" />
+              <textarea id="mcp-env" rows="2" placeholder="env vars, one per line: KEY=value (optional)"></textarea>
+            </div>
+            <div id="mcp-url-fields" class="hidden">
+              <input id="mcp-url" type="text" placeholder="https://example.com/mcp" style="width:100%; margin-bottom:6px" />
+              <textarea id="mcp-headers" rows="2" placeholder="headers, one per line: Header-Name: value (optional)"></textarea>
+            </div>
+            <div class="task-create-row">
+              <button id="mcp-create-btn" class="btn-primary" type="button">Add server</button>
+            </div>
+          </div>
+          <ul id="mcp-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="skills-modal" class="modal-overlay hidden">
+      <div class="modal modal-wide">
+        <header class="modal-header">
+          <div class="modal-title">🧩 Skills</div>
+          <button id="skills-close" type="button">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="modal-intro">
+            <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Agent Skills</a>
+            discovered in <code id="skills-cwd">…</code><code>/.claude/skills</code> and
+            <code>~/.claude/skills</code>. Enable a skill for an agent and it loads into that
+            agent's system prompt on every turn. Add new skills by dropping a
+            <code>SKILL.md</code> into a skills folder, then reopen this panel.
+          </p>
+          <div class="task-create-row" style="margin-bottom: 10px">
+            <select id="skill-agent" title="Which agent gets these skills"></select>
+            <button id="skills-refresh-btn" class="btn-test" type="button">↻ Rescan</button>
+          </div>
+          <ul id="skills-list"></ul>
         </div>
       </div>
     </div>
