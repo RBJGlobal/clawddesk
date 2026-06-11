@@ -364,6 +364,46 @@ function renderMessages() {
       row.appendChild(chips);
     }
 
+    // Emergent-skill nudge (B68): after a completed agent turn that used a
+    // couple of tools, offer to distill it into a reusable skill. The nudge is
+    // FREE — the distillation (a Haiku call) only fires if the operator clicks.
+    //
+    // Only the LATEST message gets a nudge: distillTurn() asks the server for
+    // the agent's most recent turn, so a nudge under an older turn would capture
+    // the wrong one. Gating to the last message keeps "what you click" == "what
+    // gets distilled" (and means restored-history old turns don't show stale
+    // nudges).
+    const isLatest = m === history[history.length - 1];
+    if (
+      isLatest &&
+      m.role === "agent" &&
+      !m.streaming &&
+      m.text &&
+      (m.toolUses?.length ?? 0) >= 2 &&
+      m._distillState !== "dismissed" &&
+      m._distillState !== "proposed"
+    ) {
+      const nudge = document.createElement("div");
+      nudge.className = "distill-nudge";
+      const label = document.createElement("span");
+      label.textContent = "💡 That looked like a reusable procedure.";
+      const save = document.createElement("button");
+      save.className = "distill-save";
+      save.textContent = m._distillState === "working" ? "Distilling…" : "Save as skill";
+      save.disabled = m._distillState === "working";
+      save.addEventListener("click", () => distillTurn(m));
+      const dismiss = document.createElement("button");
+      dismiss.className = "distill-dismiss";
+      dismiss.textContent = "✕";
+      dismiss.title = "Dismiss";
+      dismiss.addEventListener("click", () => {
+        m._distillState = "dismissed";
+        renderMessages();
+      });
+      nudge.append(label, save, dismiss);
+      row.appendChild(nudge);
+    }
+
     if (m.role === "agent" && m.model) {
       const footer = document.createElement("div");
       footer.className = "msg-footer";
@@ -1934,16 +1974,23 @@ const skillsStarterList = document.getElementById("skills-starter-list");
 let skillSource = "builder"; // builder | starter | paste
 let lastScan = null; // most recent ScanResult for the current content
 
+const skillsTabProposed = document.getElementById("skills-tab-proposed");
+const skillsPaneProposed = document.getElementById("skills-pane-proposed");
+
 function switchSkillsTab(tab) {
-  const onAdd = tab === "add";
-  skillsTabInstalled.classList.toggle("active", !onAdd);
-  skillsTabAdd.classList.toggle("active", onAdd);
-  skillsPaneInstalled.classList.toggle("hidden", onAdd);
-  skillsPaneAdd.classList.toggle("hidden", !onAdd);
-  if (onAdd) loadStarterSkills();
+  const t = tab === "add" || tab === "proposed" ? tab : "installed";
+  skillsTabInstalled.classList.toggle("active", t === "installed");
+  skillsTabAdd.classList.toggle("active", t === "add");
+  skillsTabProposed.classList.toggle("active", t === "proposed");
+  skillsPaneInstalled.classList.toggle("hidden", t !== "installed");
+  skillsPaneAdd.classList.toggle("hidden", t !== "add");
+  skillsPaneProposed.classList.toggle("hidden", t !== "proposed");
+  if (t === "add") loadStarterSkills();
+  if (t === "proposed") loadProposals();
 }
 skillsTabInstalled.addEventListener("click", () => switchSkillsTab("installed"));
 skillsTabAdd.addEventListener("click", () => switchSkillsTab("add"));
+skillsTabProposed.addEventListener("click", () => switchSkillsTab("proposed"));
 
 function switchSkillSource(src) {
   skillSource = src;
@@ -2151,6 +2198,178 @@ async function installStarter(id, btn) {
     btn.disabled = false;
     btn.textContent = "Install";
     alert("Could not install starter: " + err.message);
+  }
+}
+
+// ----- Emergent skills: distill a turn → proposal, review in the Proposed tab -
+
+// Ask the server to distill the message's turn into a skill proposal. The
+// message m is the agent reply; the server pulls the agent's last turn from the
+// session store, so we just need the agent id.
+async function distillTurn(m) {
+  m._distillState = "working";
+  renderMessages();
+  try {
+    const res = await fetch("/api/skills/propose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId: state.activeAgentId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (!data.skillWorthy) {
+      m._distillState = "dismissed";
+      renderMessages();
+      flashToast("Not a reusable procedure — nothing to save.");
+      return;
+    }
+    m._distillState = "proposed";
+    renderMessages();
+    refreshProposalsCount();
+    // Open the Skills modal on the Proposed tab so the draft can be reviewed.
+    await openSkillsModal();
+    switchSkillsTab("proposed");
+  } catch (err) {
+    m._distillState = undefined; // let them retry
+    renderMessages();
+    flashToast("Could not distill: " + err.message);
+  }
+}
+
+function flashToast(text) {
+  // Minimal, dependency-free toast.
+  const t = document.createElement("div");
+  t.className = "cc-toast";
+  t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add("show"), 10);
+  setTimeout(() => {
+    t.classList.remove("show");
+    setTimeout(() => t.remove(), 300);
+  }, 3200);
+}
+
+async function refreshProposalsCount() {
+  try {
+    const res = await fetch("/api/skills/proposals");
+    const data = await res.json();
+    const n = (data.proposals || []).length;
+    const badge = document.getElementById("skills-proposed-count");
+    if (badge) {
+      badge.textContent = n;
+      badge.classList.toggle("hidden", n === 0);
+    }
+  } catch {
+    /* noop */
+  }
+}
+
+async function loadProposals() {
+  try {
+    const res = await fetch("/api/skills/proposals");
+    const data = await res.json();
+    renderProposals(data.proposals || []);
+  } catch {
+    renderProposals([]);
+  }
+}
+
+function renderProposals(proposals) {
+  const list = document.getElementById("skills-proposals-list");
+  if (!list) return;
+  list.innerHTML = "";
+  if (proposals.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "col-empty";
+    empty.textContent =
+      "No proposed skills. After an agent does a useful multi-step task, use the 💡 nudge under its reply to distill it.";
+    list.appendChild(empty);
+    return;
+  }
+  for (const p of proposals) {
+    const li = document.createElement("li");
+    li.className = "memory-card skill-card";
+    const meta = document.createElement("div");
+    meta.className = "memory-meta";
+    const name = document.createElement("span");
+    name.className = "memory-scope";
+    name.textContent = p.name;
+    meta.appendChild(name);
+    if (p.allowedTools && p.allowedTools.length) {
+      const tools = document.createElement("span");
+      tools.className = "memory-badge skill-user";
+      tools.textContent = p.allowedTools.join(", ");
+      meta.appendChild(tools);
+    }
+    const desc = document.createElement("div");
+    desc.className = "memory-content";
+    desc.textContent = p.description || "";
+    const body = document.createElement("pre");
+    body.className = "proposal-body";
+    body.textContent = p.body;
+
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+    const status = document.createElement("span");
+    status.className = "field-help";
+    status.style.margin = "0";
+    const accept = document.createElement("button");
+    accept.className = "btn-primary";
+    accept.textContent = "Review & install";
+    accept.addEventListener("click", () => acceptProposal(p, accept, status));
+    const dismiss = document.createElement("button");
+    dismiss.className = "btn-test";
+    dismiss.textContent = "Dismiss";
+    dismiss.addEventListener("click", () => dismissProposal(p.id));
+    actions.append(status, accept, dismiss);
+
+    li.append(meta, desc, body, actions);
+    list.appendChild(li);
+  }
+}
+
+async function acceptProposal(p, btn, statusEl, acknowledged = false) {
+  btn.disabled = true;
+  statusEl.textContent = "Scanning + installing…";
+  try {
+    const res = await fetch(`/api/skills/proposals/${encodeURIComponent(p.id)}/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acknowledged }),
+    });
+    const data = await res.json();
+    if (res.status === 409) {
+      // High-severity findings — surface them and require acknowledgement.
+      const findings = (data.scan?.findings || [])
+        .filter((f) => f.severity === "high")
+        .map((f) => `• ${f.rule} (line ${f.line})`)
+        .join("\n");
+      const ok = confirm(
+        `This proposed skill has high-severity findings:\n\n${findings}\n\nInstall anyway? (It was distilled from a transcript that may include untrusted content.)`,
+      );
+      btn.disabled = false;
+      if (ok) return acceptProposal(p, btn, statusEl, true);
+      statusEl.textContent = "Install cancelled.";
+      return;
+    }
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    statusEl.textContent = "Installed ✓";
+    await loadProposals();
+    refreshProposalsCount();
+    await refreshSkills();
+  } catch (err) {
+    btn.disabled = false;
+    statusEl.textContent = "Failed: " + err.message;
+  }
+}
+
+async function dismissProposal(id) {
+  try {
+    await fetch(`/api/skills/proposals/${encodeURIComponent(id)}`, { method: "DELETE" });
+    await loadProposals();
+    refreshProposalsCount();
+  } catch {
+    /* noop */
   }
 }
 
@@ -4541,4 +4760,5 @@ document.addEventListener(
   await refreshWhisprDeskStatus();
   await refreshHistoryCount();
   await refreshSchedules();
+  await refreshProposalsCount();
 })();
