@@ -375,6 +375,7 @@
           <div class="skills-tabs">
             <button id="skills-tab-installed" class="skills-tab active" type="button">Installed</button>
             <button id="skills-tab-add" class="skills-tab" type="button">＋ Add a skill</button>
+            <button id="skills-tab-proposed" class="skills-tab" type="button">💡 Proposed <span id="skills-proposed-count" class="tasks-count hidden">0</span></button>
           </div>
 
           <!-- Installed tab -->
@@ -454,6 +455,18 @@
               <button id="skills-scan-btn" class="btn-test" type="button">Scan</button>
               <button id="skills-install-btn" class="btn-primary" type="button">Install</button>
             </div>
+          </div>
+
+          <!-- Proposed tab (emergent skills, B68) -->
+          <div id="skills-pane-proposed" class="hidden">
+            <p class="modal-intro">
+              When an agent completes a useful multi-step task, the 💡 nudge under
+              its reply distills it into a draft skill that lands here for review.
+              A proposal is distilled from a transcript that may include content
+              the agent read from outside, so it's treated as untrusted: installing
+              runs the same safety scan, and a high-severity draft is gated.
+            </p>
+            <ul id="skills-proposals-list"></ul>
           </div>
         </div>
       </div>

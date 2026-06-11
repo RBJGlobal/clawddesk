@@ -82,6 +82,15 @@ import {
   isUserInstalledSkillPath,
 } from "./skillInstall.js";
 import {
+  DISTILL_SYSTEM_PROMPT,
+  buildDistillUserPrompt,
+  extractSkillDraft,
+  createProposal,
+  listProposals,
+  deleteProposal,
+  acceptProposal,
+} from "./emergentSkills.js";
+import {
   maskedSettings,
   setSetting,
   deleteSetting,
@@ -980,6 +989,88 @@ app.delete("/api/skills/:slug", (req, res) => {
   } catch (err: any) {
     res.status(400).json({ error: err?.message ?? "delete failed" });
   }
+});
+
+// ----- Emergent skills (B68): distill a completed turn into a skill proposal --
+
+// Distill the agent's most recent turn into a draft skill. Opt-in (the UI only
+// calls this when the operator clicks the nudge), so the Haiku cost is never
+// spent silently. The draft lands as a PENDING proposal — never auto-installed.
+app.post("/api/skills/propose", async (req, res) => {
+  const agentId = (req.body?.agentId ?? "").toString();
+  const agent = findAgent(agentId);
+  if (!agent) return res.status(400).json({ error: "unknown agent" });
+
+  const sessionId = sessionByAgent.get(agentId);
+  if (!sessionId) return res.status(400).json({ error: "no conversation to distill yet" });
+
+  // Pull the last user + last agent message of the session, plus the tool names
+  // the agent actually used (ground truth for anchoring allowedTools).
+  const messages = getSessionMessages(sessionId);
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const lastAgent = [...messages].reverse().find((m) => m.role === "agent");
+  if (!lastUser || !lastAgent) {
+    return res.status(400).json({ error: "no complete turn to distill yet" });
+  }
+  const toolNames = Array.from(
+    new Set((lastAgent.toolUses ?? []).map((t: any) => String(t?.name)).filter(Boolean)),
+  );
+
+  const userPrompt = buildDistillUserPrompt({
+    userText: lastUser.text,
+    agentText: lastAgent.text,
+    toolNames,
+  });
+
+  let raw = "";
+  try {
+    for await (const msg of query({
+      prompt: userPrompt,
+      options: {
+        systemPrompt: DISTILL_SYSTEM_PROMPT,
+        model: "claude-haiku-4-5",
+        allowedTools: [],
+        cwd: currentCwd,
+      },
+    })) {
+      const anyMsg = msg as any;
+      if (anyMsg.type === "result" && typeof anyMsg.result === "string") raw = anyMsg.result;
+    }
+  } catch (err: any) {
+    return res.status(502).json({ error: "distillation failed: " + (err?.message ?? "unknown") });
+  }
+
+  const draft = extractSkillDraft(raw, toolNames);
+  if (!draft) return res.status(502).json({ error: "could not parse a skill draft" });
+  if (!draft.skillWorthy || !draft.name || !draft.body) {
+    return res.json({ skillWorthy: false });
+  }
+  const proposal = createProposal({ agentId, draft, sourceSession: sessionId });
+  res.json({ skillWorthy: true, proposal });
+});
+
+app.get("/api/skills/proposals", (_req, res) => {
+  res.json({ proposals: listProposals() });
+});
+
+// Accept a proposal → install via Skills Studio's path. Emergent skills are
+// UNTRUSTED (distilled from possibly tool-tainted context), so a high-severity
+// draft is gated behind `acknowledged` exactly like a pasted skill (409).
+app.post("/api/skills/proposals/:id/accept", (req, res) => {
+  const result = acceptProposal(req.params.id, {
+    acknowledged: !!req.body?.acknowledged,
+    force: !!req.body?.force,
+  });
+  if (result.ok) return res.json({ ok: true, skill: result.skill });
+  if ("gated" in result) return res.status(409).json({ error: "high-severity findings require acknowledgement", scan: result.scan });
+  const status = result.error === "proposal not found" ? 404 : 400;
+  res.status(status).json({ error: result.error });
+});
+
+app.delete("/api/skills/proposals/:id", (req, res) => {
+  const removed = deleteProposal(req.params.id);
+  if (!removed) return res.status(404).json({ error: "proposal not found" });
+  res.json({ ok: true });
 });
 
 // ----- Browser automation (per-agent Playwright preset + domain gate) -----
