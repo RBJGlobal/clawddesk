@@ -1,4 +1,4 @@
-# ClawdDesk — User Guide
+# ClawdDesk User Guide
 
 A friendly, task-oriented guide to every surface in ClawdDesk. If the
 [main README](../../README.md) is the "what and why," this is the "how do I
@@ -10,18 +10,18 @@ local SQLite file (`data/lab.db`) that never leaves your laptop.
 
 ## Status legend
 
-- `[Live]` — shipped and working today. Every page in this guide is Live.
-- `[Planned]` — on the backlog, not yet built (see [`backlog.md`](../../backlog.md)).
+- `[Live]`: shipped and working today. Every page in this guide is Live.
+- `[Planned]`: on the backlog, not yet built (see [`backlog.md`](../../backlog.md)).
   Examples still on the bench: file-rewind UI, an inline AskUserQuestion card,
   a sub-agent depth limit.
 
 ## New here? Read in this order
 
-1. [Getting Started](./getting-started.md) — install, pick an auth method, send your first message.
-2. [What's Under the Hood](./whats-under-the-hood.md) — how the Claude Agent SDK maps to what you see.
-3. [Chat and Models](./chat-and-models.md) — the surface you spend the most time in.
-4. [Agents](./agents-and-overview.md) — the built-in specialists and how to spawn your own.
-5. [Memory and Pins](./memory-and-pins.md) — give an agent durable context.
+1. [Getting Started](./getting-started.md): install, pick an auth method, send your first message.
+2. [What's Under the Hood](./whats-under-the-hood.md): how the Claude Agent SDK maps to what you see.
+3. [Chat and Models](./chat-and-models.md): the surface you spend the most time in.
+4. [Agents](./agents-and-overview.md): the built-in specialists and how to spawn your own.
+5. [Memory and Pins](./memory-and-pins.md): give an agent durable context.
 
 Everything else is pick-and-choose.
 

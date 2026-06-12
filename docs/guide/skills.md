@@ -23,36 +23,36 @@ Skills you installed through the panel (they live in `~/.claude/skills`) show a 
 
 ## Adding a skill (Skills Studio)
 
-The **＋ Add a skill** tab gives you three ways to create a skill, all of which install a standard `SKILL.md` into `~/.claude/skills` — there is no external registry and nothing is ever uploaded off your machine.
+The **＋ Add a skill** tab gives you three ways to create a skill, all of which install a standard `SKILL.md` into `~/.claude/skills`; there is no external registry and nothing is ever uploaded off your machine.
 
-- **🛠 Skill Builder** — fill in a name, a description (this is what tells the agent *when* to use the skill), an optional list of allowed tools, and the instructions. ClawdDesk writes a correctly-formatted `SKILL.md` for you.
-- **📦 Starter pack** — a handful of ready-made, SDK-native skills bundled with the app (a commit-message helper, a changelog writer, a code explainer). One click installs them.
-- **📋 Paste SKILL.md** — paste a full skill you found elsewhere. Because this is content from outside, it goes through the safety scan and a review gate before it installs.
+- **🛠 Skill Builder**: fill in a name, a description (this is what tells the agent *when* to use the skill), an optional list of allowed tools, and the instructions. ClawdDesk writes a correctly-formatted `SKILL.md` for you.
+- **📦 Starter pack**: a handful of ready-made, SDK-native skills bundled with the app (a commit-message helper, a changelog writer, a code explainer). One click installs them.
+- **📋 Paste SKILL.md**: paste a full skill you found elsewhere. Because this is content from outside, it goes through the safety scan and a review gate before it installs.
 
 ### The safety scan
 
-Before a pasted skill installs, its text is run through a **static security scan** — a heuristic lint that flags risky patterns like piping a download straight into a shell, `rm -rf`, reverse shells, reading credential files, or editing your shell startup files. Findings are shown with a severity (low / medium / high) and the exact line.
+Before a pasted skill installs, its text is run through a **static security scan**, a heuristic lint that flags risky patterns like piping a download straight into a shell, `rm -rf`, reverse shells, reading credential files, or editing your shell startup files. Findings are shown with a severity (low / medium / high) and the exact line.
 
-This is a *review aid, not a sandbox* — a skill is only text until an agent acts on it, and the scan catches obvious red flags, not everything. For that reason:
+This is a *review aid, not a sandbox*. A skill is only text until an agent acts on it, and the scan catches obvious red flags, not everything. For that reason:
 
 - For the **Skill Builder** (content you wrote), the scan is purely informational.
 - For a **pasted** skill with a **high-severity** finding, the install button stays blocked until you tick "I've reviewed this skill and trust the source." The server enforces this too, so the gate can't be skipped.
 
 There is deliberately **no VirusTotal or cloud scan**: antivirus engines match malware binaries, not harmful instructions (so they'd add no signal on a text file), and uploading your skill to a third party would break the privacy promise that nothing leaves your machine without consent.
 
-> **Why not just install from ClawHub (or a big public catalog)?** ClawdDesk is built on the Claude Agent SDK, whose tool vocabulary is `Read` / `Write` / `Bash` / `WebFetch` / MCP tools. Catalogs written for other engines reference tools that don't exist here (`fs_write_file`, `cmd_bash`, `browser_open`), so their skills would load but tell the agent to call tools it doesn't have. The honest path is to author SDK-native skills — which is exactly what Skills Studio does.
+> **Why not just install from ClawHub (or a big public catalog)?** ClawdDesk is built on the Claude Agent SDK, whose tool vocabulary is `Read` / `Write` / `Bash` / `WebFetch` / MCP tools. Catalogs written for other engines reference tools that don't exist here (`fs_write_file`, `cmd_bash`, `browser_open`), so their skills would load but tell the agent to call tools it doesn't have. The honest path is to author SDK-native skills, which is exactly what Skills Studio does.
 
-## Emergent skills — save a procedure the agent just did
+## Emergent skills: save a procedure the agent just did
 
-The best skills come from work you've actually done. When an agent finishes a task that used a few tools, a small **💡 nudge** appears under its reply: *"That looked like a reusable procedure — Save as skill?"* The nudge itself is free — nothing happens until you click it.
+The best skills come from work you've actually done. When an agent finishes a task that used a few tools, a small **💡 nudge** appears under its reply: *"That looked like a reusable procedure. Save as skill?"* The nudge itself is free; nothing happens until you click it.
 
-If you do click it, ClawdDesk asks a fast, cheap model to **distill that turn into a draft skill**: it reads what you asked, what the agent did, and which tools it used, then writes a `SKILL.md` that generalizes the one-off run into a repeatable procedure. The tools the draft is allowed to use are **anchored to the tools the agent actually used** — it can't invent a tool name. If the turn wasn't really a reusable procedure (idle chat, a one-off answer), the distiller says so and nothing is saved.
+If you do click it, ClawdDesk asks a fast, cheap model to **distill that turn into a draft skill**: it reads what you asked, what the agent did, and which tools it used, then writes a `SKILL.md` that generalizes the one-off run into a repeatable procedure. The tools the draft is allowed to use are **anchored to the tools the agent actually used**; it can't invent a tool name. If the turn wasn't really a reusable procedure (idle chat, a one-off answer), the distiller says so and nothing is saved.
 
-The draft lands in the **💡 Proposed** tab of the Skills modal — it is **never auto-installed**. There you can read the full draft, then **Review & install** it or **Dismiss** it.
+The draft lands in the **💡 Proposed** tab of the Skills modal; it is **never auto-installed**. There you can read the full draft, then **Review & install** it or **Dismiss** it.
 
 ### Why a proposed skill is treated as untrusted
 
-A proposal is generated by a model reading a transcript — and that transcript may contain content the agent pulled in from outside, like a web page it browsed. A malicious page could try to influence what gets written into the skill. So an emergent skill is held to the **same bar as a pasted skill**, not the Skill Builder: installing it runs the security scan, and a high-severity finding is blocked behind an explicit "install anyway" confirmation that the server enforces. The transcript is treated as the ground truth for *which tools* the skill may use, but its *content* is never trusted blindly.
+A proposal is generated by a model reading a transcript, and that transcript may contain content the agent pulled in from outside, like a web page it browsed. A malicious page could try to influence what gets written into the skill. So an emergent skill is held to the **same bar as a pasted skill**, not the Skill Builder: installing it runs the security scan, and a high-severity finding is blocked behind an explicit "install anyway" confirmation that the server enforces. The transcript is treated as the ground truth for *which tools* the skill may use, but its *content* is never trusted blindly.
 
 ## How it works
 
