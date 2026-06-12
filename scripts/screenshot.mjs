@@ -185,5 +185,59 @@ await wait(300);
 await snap("12-new-agent-editor");
 await page.locator("#agent-cancel").click();
 
+// ---------------------------------------------------------------------------
+// New-surface captures (added with the 5 Clawless ports + rebrand). Each opens
+// a modal, puts it in a representative state, snaps, and closes.
+// ---------------------------------------------------------------------------
+
+// 16. Browser automation — enabled for an agent with an allow-listed domain
+await page.locator("#browser-btn").click();
+await page.waitForSelector("#browser-modal:not(.hidden)");
+await page.selectOption("#browser-agent", "ops").catch(() => {});
+await page.locator("#browser-enabled").check().catch(() => {});
+await page.waitForSelector("#browser-config:not(.hidden)").catch(() => {});
+await page.locator("#browser-domain-input").fill("github.com").catch(() => {});
+await page.locator("#browser-domain-add").click().catch(() => {});
+await wait(400);
+await snap("16-browser-automation");
+// Leave it clean for next runs: remove the demo domain + disable.
+await page.locator("#browser-enabled").uncheck().catch(() => {});
+await page.locator("#browser-close").click();
+
+// 17. Agent personality — the Soul Builder (custom) fields
+await page.locator("#personality-btn").click();
+await page.waitForSelector("#personality-modal:not(.hidden)");
+await page.selectOption("#personality-preset", "custom").catch(() => {});
+await page.waitForSelector("#personality-custom:not(.hidden)").catch(() => {});
+await page.locator("#personality-style").fill("Warm but to the point. Explain the trade-off, then recommend.").catch(() => {});
+await page.locator("#personality-name").fill("Jay").catch(() => {});
+await wait(400);
+await snap("17-personality-soul-builder");
+await page.locator("#personality-close").click();
+
+// 18. Skills Studio — the Add tab (Skill Builder + source tabs)
+await page.locator("#skills-btn").click();
+await page.waitForSelector("#skills-modal:not(.hidden)");
+await page.locator("#skills-tab-add").click();
+await page.waitForSelector("#skills-pane-add:not(.hidden)").catch(() => {});
+await page.locator("#skill-build-name").fill("commit-helper").catch(() => {});
+await page.locator("#skill-build-desc").fill("Write clear conventional commit messages from the staged diff.").catch(() => {});
+await page.locator("#skill-build-tools").fill("Bash, Read").catch(() => {});
+await wait(400);
+await snap("18-skills-studio");
+await page.locator("#skills-close").click();
+
+// 19. Scheduler — the result-destination picker (file) on the create form
+await page.locator("#schedules-btn").click();
+await page.waitForSelector("#schedules-modal:not(.hidden)");
+await page.locator("#schedule-prompt").fill("Summarize my unread newsletters and list the 3 worth reading.").catch(() => {});
+await page.locator("#schedule-cron").fill("0 9 * * *").catch(() => {});
+await page.selectOption("#schedule-dest-type", "file").catch(() => {});
+await page.waitForSelector("#schedule-dest-file", { state: "visible" }).catch(() => {});
+await page.locator("#schedule-dest-file").fill("daily-digest.md").catch(() => {});
+await wait(400);
+await snap("19-scheduler-destinations");
+await page.locator("#schedules-close").click();
+
 await browser.close();
 console.log("done");
