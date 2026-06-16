@@ -142,9 +142,16 @@ const SCAN_RULES: { severity: Severity; rule: string; re: RegExp }[] = [
   { severity: "high", rule: "Decode base64 into a shell", re: /base64\s+(-d|--decode)[^\n|]*\|\s*(ba)?sh\b/i },
   { severity: "high", rule: "Reverse shell via /dev/tcp", re: /\/dev\/(tcp|udp)\//i },
   { severity: "high", rule: "Netcat with command execution", re: /\bnc\b[^\n]*\s-[a-z]*e\b/i },
-  { severity: "high", rule: "Recursive force-delete", re: /\brm\s+-[a-z]*r[a-z]*f|\brm\s+-[a-z]*f[a-z]*r/i },
+  // Recursive force-delete — matches combined (-rf/-fr) AND split/long flags
+  // (rm -r -f, rm --recursive --force) by requiring both an r-flag and an
+  // f-flag anywhere in the rm invocation.
+  { severity: "high", rule: "Recursive force-delete", re: /\brm\b(?=[^\n]*(?:-{1,2}r(?:ecursive)?|-[a-z]*r))(?=[^\n]*(?:-{1,2}f(?:orce)?|-[a-z]*f))/i },
   { severity: "high", rule: "Write to SSH authorized_keys", re: /\.ssh\/authorized_keys/i },
   { severity: "high", rule: "Dynamic eval of a string", re: /\beval\s*\(|\beval\s+["'$]/i },
+  // Download-to-file-then-execute (the two-step cousin of the pipe-to-shell rule)
+  { severity: "high", rule: "Download to a file then execute it", re: /\b(curl|wget)\b[^\n]*(?:\s-[oO]\b|>)[^\n]*\b(?:ba|z)?sh\b/i },
+  // Inline interpreter that both fetches and executes (python -c / node -e / perl|ruby -e)
+  { severity: "high", rule: "Inline interpreter fetch-and-exec", re: /\bpython[0-9.]*\s+-c\b[^\n]*(?:urllib|requests|os\.system|subprocess|\bexec\()|\bnode\s+-e\b[^\n]*(?:fetch|require\(|eval|child_process)|\b(?:perl|ruby)\s+-e\b[^\n]*(?:system|exec|eval|socket)/i },
   // MEDIUM — privilege, persistence, credential reads
   { severity: "medium", rule: "Elevated privileges (sudo)", re: /\bsudo\b/i },
   { severity: "medium", rule: "Edit shell startup file", re: />>?\s*~?\/?\.?(bashrc|zshrc|profile|bash_profile)\b/i },
