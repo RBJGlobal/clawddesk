@@ -17,7 +17,6 @@ import {
   createCustomAgent,
   updateCustomAgent,
   deleteCustomAgent,
-  findCustomAgent,
 } from "./customAgents.js";
 
 // Minimal .env loader (no dep). Runs before any env usage below.
@@ -111,7 +110,6 @@ import type { Task as QueueTask } from "./taskQueue.js";
 import { costGuard } from "./costGuardInstance.js";
 import {
   initScheduler,
-  cronEval,
   cronPreview,
 } from "./schedulerInstance.js";
 import type {
@@ -1421,7 +1419,7 @@ app.post(
   },
 );
 
-app.get("/api/whisprdesk/events", async (req, res) => {
+app.get("/api/whisprdesk/events", async (_req, res) => {
   const { url, token } = whisprdeskConfig();
   if (!token) return res.status(400).end();
 

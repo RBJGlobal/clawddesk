@@ -51,10 +51,3 @@ export function initScheduler(
   _scheduler = new Scheduler(db, cronEval, enqueueAdapter, onFire);
   return _scheduler;
 }
-
-export function getScheduler(): Scheduler {
-  if (!_scheduler) {
-    throw new Error("scheduler not initialized; call initScheduler() first");
-  }
-  return _scheduler;
-}

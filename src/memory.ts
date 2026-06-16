@@ -2,7 +2,6 @@ import Database from "better-sqlite3";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
-import os from "node:os";
 import { randomUUID } from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,11 +88,6 @@ export function createMemory(input: {
 export function deleteMemory(id: string): boolean {
   const r = db.prepare("DELETE FROM memories WHERE id = ?").run(id);
   return r.changes > 0;
-}
-
-export function clearMemories(): number {
-  const r = db.prepare("DELETE FROM memories").run();
-  return r.changes;
 }
 
 const MAX_INJECTED = 20;

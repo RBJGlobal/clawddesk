@@ -93,19 +93,3 @@ and let them know Main or the user themselves should make the edit.`,
 };
 
 export const AGENT_LIST = Object.values(AGENTS);
-
-export function subAgentsFor(agentId: string): Record<string, any> | undefined {
-  const agent = AGENTS[agentId];
-  if (!agent?.isRouter) return undefined;
-  const subs: Record<string, any> = {};
-  for (const candidate of AGENT_LIST) {
-    if (candidate.id === agentId) continue;
-    subs[candidate.id] = {
-      description: candidate.description,
-      prompt: candidate.systemPrompt,
-      tools: candidate.allowedTools,
-      model: candidate.model,
-    };
-  }
-  return subs;
-}
