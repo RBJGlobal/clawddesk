@@ -14,6 +14,7 @@
 import type DatabaseConstructor from "better-sqlite3";
 
 type Database = DatabaseConstructor.Database;
+type Statement = DatabaseConstructor.Statement;
 
 // ============================================================================
 // Public types
@@ -69,9 +70,9 @@ export function migrate(db: Database): void {
 
 export class CostGuard {
   private readonly resolveCaps: CapResolver;
-  private readonly insertStmt: ReturnType<Database["prepare"]>;
-  private readonly rateCountStmt: ReturnType<Database["prepare"]>;
-  private readonly monthCostStmt: ReturnType<Database["prepare"]>;
+  private readonly insertStmt: Statement;
+  private readonly rateCountStmt: Statement;
+  private readonly monthCostStmt: Statement;
 
   constructor(db: Database, resolveCaps: CapResolver) {
     this.resolveCaps = resolveCaps;
