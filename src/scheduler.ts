@@ -631,11 +631,3 @@ function rowToSchedule(row: ScheduleRow): Schedule {
     updatedAt: row.updated_at,
   };
 }
-
-// Re-exported for tests.
-export const __INTERNALS__ = {
-  DEFAULT_MAX_CONSECUTIVE_FAILURES,
-  DEFAULT_TICK_INTERVAL_MS,
-  PROMPT_MAX_LEN,
-  CRON_MAX_LEN,
-};

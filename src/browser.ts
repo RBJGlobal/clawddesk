@@ -25,7 +25,6 @@
 // only allow-list domains you trust. Fully closing this needs a connect-time
 // IP-filtering egress proxy — a future enhancement, tracked in the backlog.
 
-import { randomUUID } from "node:crypto";
 import { db } from "./memory.js";
 
 // ============================================================================
@@ -389,6 +388,3 @@ export function browserOptionsFor(
 
 // The tool name the guard hook matches (explicit navigation).
 export const BROWSER_NAV_TOOL = "mcp__browser__browser_navigate";
-
-// Re-exported for tests.
-export const __INTERNALS__ = { toIPv4, isPrivateIPv4, hostMatchesDomain, BLOCKED_ORIGIN_FLOOR };

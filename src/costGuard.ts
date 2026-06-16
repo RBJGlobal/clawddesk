@@ -68,14 +68,12 @@ export function migrate(db: Database): void {
 // ============================================================================
 
 export class CostGuard {
-  private readonly db: Database;
   private readonly resolveCaps: CapResolver;
   private readonly insertStmt: ReturnType<Database["prepare"]>;
   private readonly rateCountStmt: ReturnType<Database["prepare"]>;
   private readonly monthCostStmt: ReturnType<Database["prepare"]>;
 
   constructor(db: Database, resolveCaps: CapResolver) {
-    this.db = db;
     this.resolveCaps = resolveCaps;
     this.insertStmt = db.prepare(
       `INSERT INTO cost_ledger

@@ -454,9 +454,3 @@ export function parseAllowedChatIds(raw: string | undefined): Set<number> {
   }
   return out;
 }
-
-// Re-exported for tests.
-export const __INTERNALS__ = {
-  REPLY_CHUNK_TARGET,
-  TELEGRAM_API,
-};
