@@ -73,12 +73,6 @@ const DEFAULT_LEASE_SECONDS = 300;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const METADATA_SOFT_CAP_BYTES = 64 * 1024;
 
-const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set([
-  "done",
-  "failed",
-  "cancelled",
-]);
-
 // ============================================================================
 // Schema
 // ============================================================================
