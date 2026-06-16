@@ -1650,6 +1650,11 @@ test.describe("ClawdDesk — new features smoke (no engine)", () => {
     expect(parsed?.body).toContain("ls");
     // Garbage → null, not a throw.
     expect(extractJson("no json here")).toBe(null);
+    // Regression (review 2026-06-16): a STRAY brace in the preamble before the
+    // real object must not abort extraction — scan forward to the next '{'.
+    const strayBrace =
+      'Here is the {placeholder} skill:\n```json\n{"name":"y","body":"hi"}\n```';
+    expect(extractJson(strayBrace)?.name).toBe("y");
   });
 
   test("Emergent — extractSkillDraft anchors allowedTools to observed tools", async () => {
@@ -1662,6 +1667,13 @@ test.describe("ClawdDesk — new features smoke (no engine)", () => {
     // skillWorthy:false short-circuits.
     const no = extractSkillDraft('```json\n{"skillWorthy":false}\n```', ["Read"]);
     expect(no?.skillWorthy).toBe(false);
+    // Regression (review 2026-06-16): the STRING "false" (or 0) must also be
+    // treated as not-worthy, not as truthy.
+    const noStr = extractSkillDraft('```json\n{"skillWorthy":"false","name":"x","body":"b"}\n```', ["Read"]);
+    expect(noStr?.skillWorthy).toBe(false);
+    // But an OMITTED flag with name+body is still accepted (omission contract).
+    const omitted = extractSkillDraft('```json\n{"name":"x","body":"b"}\n```', ["Read"]);
+    expect(omitted?.skillWorthy).toBe(true);
   });
 
   test("Emergent — proposal CRUD + accept gate (clean installs, high-sev gated)", async () => {
