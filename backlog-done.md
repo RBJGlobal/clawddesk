@@ -96,5 +96,11 @@
 |------|-------|
 | Node-25 / better-sqlite3 rebuild | App wouldn't boot after a Node upgrade (NODE_MODULE_VERSION 137→141); fixed with `npm rebuild better-sqlite3` |
 | Full regression baseline | 100/100 green (98 smoke + 2 engine) confirmed on the current environment |
+| Multi-agent regression review | 4-dimension review (correctness/dead-code/security/consistency) + adversarial verification: 19 raw → 17 confirmed findings |
+| PR #25 — backlog reconciliation | This file + `backlog-open.md` + `backlog.md` header |
+| PR #26 — dead-code removal | 65 lines: unused `getScheduler`/`clearMemories`/dead `subAgentsFor`/CostGuard `db` field/4 unused imports/5 orphaned `__INTERNALS__` seams |
+| PR #27 — correctness + type-cleanliness | extractJson scan-forward, skillWorthy "false"-string hardening, propose turn-pairing, lost-race 409 error shape, **costGuard typing → `tsc` now 0 errors (was 5)** |
+| PR #28 — scan-gate hardening | rm split/long-flag bypass + download-then-exec + interpreter fetch-exec now trip HIGH; prototyped against benign prose for zero false positives |
+| Dead-code sweep clean | `tsc --noUnusedLocals --noUnusedParameters` → 0 (removed a final orphan, `TERMINAL_STATUSES`); plain `tsc --noEmit` → 0 |
 
-_(Further code-review fixes from this session are appended here as their PRs merge.)_
+**End state:** `tsc` clean (0 errors), 0 unused locals/params, 100 tests green. 16 of 17 review findings fixed; 1 deferred (see `backlog-open.md`).

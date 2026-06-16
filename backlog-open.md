@@ -53,6 +53,8 @@
 
 ## Issues surfaced by the 2026-06-16 regression review
 
-> Populated from the multi-agent review (`regression-review` workflow). Confirmed issues that were **fixed tonight** move to `backlog-done.md`; anything **deferred** (risky / judgment-call) is listed here with its rationale.
+The review produced **17 confirmed findings** (0 high, 2 medium, 15 low). **16 were fixed tonight** (PRs #26–#28 + the final dead-code sweep — see `backlog-done.md`): all 10 dead-code items, both scan-gate bypasses, the extractJson scan-forward bug, the skillWorthy hardening, the propose turn-pairing, the lost-race 409 shape, and the costGuard typing (tsc now 0 errors). **One was deferred** (behavior-adding UX, per the apply-safe/stage-risky rule):
 
-_(Pending — appended as the review completes and fixes land.)_
+| # | Item | Effort | Why deferred |
+|---|------|--------|--------------|
+| 15 | **Skill install: overwrite-on-collision UX** | S | `installSkill`/`acceptProposal` accept a `force` flag (the routes forward it), but no frontend caller ever sends it — so a slug collision is an unrecoverable 400 in the UI (a manual-delete workaround exists; an emergent proposal whose name collides can never be accepted). Fix: on the "already exists" 400, `confirm()` + retry with `force:true`, mirroring the existing 409-acknowledged retry. Behavior-adding UX → staged for your review rather than auto-merged. Low severity. Slots into **P2** (completes a shipped feature's UX). |
