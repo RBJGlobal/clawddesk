@@ -394,8 +394,3 @@ function safeParse(s: string): unknown {
     return null;
   }
 }
-
-// Re-exported for tests.
-export const __INTERNALS__ = {
-  TOOL_INPUT_MAX_BYTES,
-};

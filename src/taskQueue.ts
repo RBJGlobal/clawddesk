@@ -564,11 +564,3 @@ function safeParse(s: string): unknown {
     return null;
   }
 }
-
-// Re-exported for tests that want to assert against the constant directly.
-export const __INTERNALS__ = {
-  DEFAULT_LEASE_SECONDS,
-  DEFAULT_MAX_ATTEMPTS,
-  METADATA_SOFT_CAP_BYTES,
-  TERMINAL_STATUSES,
-};
