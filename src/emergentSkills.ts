@@ -107,31 +107,37 @@ export function buildDistillUserPrompt(input: {
 // naive non-greedy fence regex in testing).
 export function extractJson(text: string): any | null {
   if (typeof text !== "string") return null;
-  const start = text.indexOf("{");
-  if (start < 0) return null;
-  let depth = 0;
-  let inStr = false;
-  let esc = false;
-  for (let i = start; i < text.length; i++) {
-    const c = text[i];
-    if (inStr) {
-      if (esc) esc = false;
-      else if (c === "\\") esc = true;
-      else if (c === '"') inStr = false;
-    } else if (c === '"') {
-      inStr = true;
-    } else if (c === "{") {
-      depth++;
-    } else if (c === "}") {
-      depth--;
-      if (depth === 0) {
-        try {
-          return JSON.parse(text.slice(start, i + 1));
-        } catch {
-          return null;
+  // Scan from each '{'. If the first balanced object fails to parse (e.g. a
+  // stray brace in the model's preamble before the real ```json block), resume
+  // the scan at the NEXT '{' rather than giving up — only return null when no
+  // candidate parses.
+  let start = text.indexOf("{");
+  while (start >= 0) {
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let i = start; i < text.length; i++) {
+      const c = text[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === "\\") esc = true;
+        else if (c === '"') inStr = false;
+      } else if (c === '"') {
+        inStr = true;
+      } else if (c === "{") {
+        depth++;
+      } else if (c === "}") {
+        depth--;
+        if (depth === 0) {
+          try {
+            return JSON.parse(text.slice(start, i + 1));
+          } catch {
+            break; // this candidate didn't parse; try the next '{'
+          }
         }
       }
     }
+    start = text.indexOf("{", start + 1);
   }
   return null;
 }
@@ -143,7 +149,14 @@ export function extractJson(text: string): any | null {
 export function extractSkillDraft(raw: string, observedTools: string[]): SkillDraft | null {
   const obj = extractJson(raw);
   if (!obj || typeof obj !== "object") return null;
-  if (obj.skillWorthy === false) {
+  // Reject explicit not-worthy markers (boolean false, 0, or the string
+  // "false") while still accepting an omitted flag when name/body are present —
+  // the downstream gate (server.ts) requires name+body anyway, so this only
+  // tightens the obvious bad-marker case without changing the omission contract.
+  const sw = obj.skillWorthy;
+  const notWorthy =
+    sw === false || sw === 0 || (typeof sw === "string" && sw.trim().toLowerCase() === "false");
+  if (notWorthy) {
     return { skillWorthy: false, name: "", description: "", allowedTools: [], body: "" };
   }
   const observed = new Set(observedTools);

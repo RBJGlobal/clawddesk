@@ -1012,11 +1012,27 @@ app.post("/api/skills/propose", async (req, res) => {
   const sessionId = sessionByAgent.get(agentId);
   if (!sessionId) return res.status(400).json({ error: "no conversation to distill yet" });
 
-  // Pull the last user + last agent message of the session, plus the tool names
-  // the agent actually used (ground truth for anchoring allowedTools).
+  // Derive the most recent COMPLETE turn as a PAIR: the last agent message, then
+  // the last user message that PRECEDES it. Two independent reverse-finds could
+  // pair an in-progress / out-of-band user message (appended after the last
+  // agent reply) with an older agent reply, mixing unrelated turns into the
+  // distill prompt. The tool names still come from that agent message.
   const messages = getSessionMessages(sessionId);
-  const lastUser = [...messages].reverse().find((m) => m.role === "user");
-  const lastAgent = [...messages].reverse().find((m) => m.role === "agent");
+  let lastAgentIdx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "agent") {
+      lastAgentIdx = i;
+      break;
+    }
+  }
+  const lastAgent = lastAgentIdx >= 0 ? messages[lastAgentIdx] : undefined;
+  let lastUser;
+  for (let i = lastAgentIdx - 1; i >= 0; i--) {
+    if (messages[i].role === "user") {
+      lastUser = messages[i];
+      break;
+    }
+  }
   if (!lastUser || !lastAgent) {
     return res.status(400).json({ error: "no complete turn to distill yet" });
   }
@@ -1244,8 +1260,17 @@ app.post("/api/task/:id/run", async (req, res) => {
   const checked = taskQueue.checkoutById(taskId, WORKER_ID);
   if (!checked) {
     // Lost the race to another caller; reflect current state to the client.
+    // Always carry a top-level `error` string (the frontend reads `.error` on
+    // any non-2xx); expose the fresh task under `.task` so callers can still
+    // update their view.
     const fresh = taskQueue.get(taskId);
-    return res.status(409).json(fresh ? toApiTask(fresh) : { error: "task not available" });
+    return res
+      .status(409)
+      .json(
+        fresh
+          ? { error: `task already ${statusFromQueue(fresh.status)}`, task: toApiTask(fresh) }
+          : { error: "task not available" },
+      );
   }
 
   let finalText = "";
