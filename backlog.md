@@ -1,11 +1,18 @@
 # ClawdDesk — Sequential Backlog
 
-> Last Updated: 2026-04-26 (C16 epic added — Phase 2: Autonomous Operations)
-> Total items: 19+ (7 foundation + 14 shipped + 1 active epic + future list)
-> Completed: F1–F7 + C01 + C02 + C03 + C06 + C08 + C09 + C10 + C11 + C13 + C14 + C15 + A1 + A2 + A3
-> C12 was partial then reverted — flag pulled in the audit sweep, follow-up tracked
-> Public surface: github.com/RBJGlobal/clawddesk + rbjglobal.github.io/clawddesk/
-> Tests: 22 smoke + 2 @engine = 24, all green
+> Last Updated: 2026-06-16 (full reconciliation — status split into two files)
+>
+> ⚠️ **For current status, use the two reconciled files, not the checkboxes below:**
+> - **[`backlog-done.md`](./backlog-done.md)** — everything shipped (F1–F7, C01–C16, A1–A3, the 5 Clawless ports, the rebrand + site work).
+> - **[`backlog-open.md`](./backlog-open.md)** — what's still open, in priority order.
+>
+> The item-status checkboxes and the "Future — Not Scheduled" list further down this file
+> are **historical and stale** (many "Not started" items have since shipped — e.g. C04→C09,
+> C05, C16a–d). The **Change Log** at the bottom is the accurate historical record and is kept current.
+> Core development closed 2026-06-10; remaining work is nice-to-haves.
+>
+> Public surface: github.com/RBJGlobal/clawddesk + clawddesk.ai
+> Tests: 98 smoke + 2 @engine = 100, all green (2026-06-16)
 
 > **Work order**: Items are numbered C##. Complete them in order unless a higher-priority need lands.
 >
