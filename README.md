@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Agent SDK](https://img.shields.io/badge/built_on-Claude_Agent_SDK-8b9eff)](https://code.claude.com/docs/en/agent-sdk/overview)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ESM-3178c6)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-107_passing-6ee7b7)](./tests)
+[![Tests](https://img.shields.io/badge/tests-110_passing-6ee7b7)](./tests)
 
 A small, hackable **multi-agent dashboard** built directly on Anthropic's official [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview). Four built-in specialists plus **unlimited custom agents** you spawn from the sidebar, each with its own system prompt, tool allowlist, and model. A router that delegates to specialists. **Durable SQLite-backed task queue** with atomic checkout and lease-based crash recovery. **Cron-style scheduler** that wakes agents on a schedule. **Per-task approval gates** that pause dangerous tools for sign-off. **Per-agent budget caps** (cost + rate) enforced before every SDK call. **Context pins**, **MCP servers**, and **Skills** configurable per agent. A **Telegram bridge** so you can drive the same agents from your phone. Token-by-token streaming, folder scoping, `@file` / `/command` autocomplete, persistent SQLite memory, conversation history with restore-and-resume, OAuth-aware cost tracking, Markdown / JSON export, a ⌘K command palette, and voice I/O via [WhisprDesk](https://whisprdesk.com/).
 
