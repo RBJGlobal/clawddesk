@@ -30,7 +30,15 @@ import { fileURLToPath } from "node:url";
 // stable across projects ("skills I installed" stay visible no matter which
 // folder an agent is pointed at); cwd-scoped skills would vanish when you
 // switch projects. discoverSkills() in skills.ts already reads this location.
-const USER_SKILLS_ROOT = path.join(os.homedir(), ".claude", "skills");
+//
+// `CLAWDDESK_SKILLS_ROOT` (operator-set env, never request input) overrides the
+// default so the test suite can point installs at a throwaway temp dir and
+// never touch the real ~/.claude/skills. Resolved to absolute so it stays a
+// sound prefix for the security floor below regardless of how it's passed.
+const SKILLS_ROOT_OVERRIDE = process.env.CLAWDDESK_SKILLS_ROOT?.trim();
+const USER_SKILLS_ROOT = SKILLS_ROOT_OVERRIDE
+  ? path.resolve(SKILLS_ROOT_OVERRIDE)
+  : path.join(os.homedir(), ".claude", "skills");
 
 // Bundled starter pack — SDK-native skills shipped in the repo for genuine
 // one-click install. Resolved relative to this module so it works regardless of

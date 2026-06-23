@@ -4,7 +4,7 @@
 > Everything below is **shipped and verified** (merged to `main`, covered by the test suite where applicable).
 > Companion file: [`backlog-open.md`](./backlog-open.md) — what's still open, in priority order.
 >
-> **Current state:** 107 automated tests green (105 Playwright smoke + 2 @engine). Repo: `RBJGlobal/clawddesk`. Domain: clawddesk.ai.
+> **Current state:** 110 automated tests green (108 Playwright smoke + 2 @engine). Repo: `RBJGlobal/clawddesk`. Domain: clawddesk.ai.
 
 ---
 
@@ -112,6 +112,7 @@
 | Item | Notes |
 |------|-------|
 | **P1 #1 — Sub-agent turn cap** | SDK-native `maxTurns` rail against runaway delegation. New self-contained `src/agentTurns.ts` (`maxAgentTurns()` env-overridable via `CLAWDDESK_MAX_AGENT_TURNS`, default 30; `delegationOptions()`; `maxTurnsMessage()`; `isErrorResultSubtype()`). Applied top-level at all 5 delegation `query()` sites + per-`AgentDefinition` in `subAgentsFor`. `error_max_turns` now surfaces a friendly message instead of a blank reply (chat, stream, task, scheduled fire, Telegram). It's a turn / total-work cap, **not** a recursion counter — built-in delegation is provably depth-1. +7 offline tests. Full six-role flow: Architect (advisor) → Developer → Reviewer (SIGN-OFF) → QA (107 green) → Perf (negligible) → Security (SIGN-OFF, net improvement). |
+| **P1 #2 — Test-isolate the skills root** | `skillInstall.ts` `USER_SKILLS_ROOT` now honors operator env `CLAWDDESK_SKILLS_ROOT` (trimmed, `path.resolve`'d to absolute — keeps the security prefix-check floor sound, fail-closed on malformed values) else the `~/.claude/skills` default. `playwright.config.ts` sets it to a temp dir (`||=`, per-worker, before any spec import) so in-process Skills/Emergent install tests never touch real user state — verified: 0 leakage to `~/.claude/skills`. +3 offline tests. Reviewer SIGN-OFF; Perf/Security trivial (operator-only env, one module-load read). |
 | better-sqlite3 re-rebuild | Node drifted back 25→24 (ABI 141→137); `npm rebuild better-sqlite3` retargeted current node so the in-process DB tests load. |
 
 **Open risks surfaced (by design, LOW):** non-router agents are intentionally uncapped (only delegation paths get `maxTurns`); a custom agent granted the `Agent` tool can spawn ephemeral SDK sub-agents bounded by their parent's cap but not individually by `subAgentsFor`. Worst-case total work is `cap × fan-out` — finite. Set `CLAWDDESK_MAX_AGENT_TURNS` conservatively for high-fan-out custom routers.
