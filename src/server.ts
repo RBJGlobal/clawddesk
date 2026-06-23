@@ -14,6 +14,11 @@ import {
   builtInIds,
 } from "./agentRegistry.js";
 import {
+  delegationOptions,
+  maxTurnsMessage,
+  isErrorResultSubtype,
+} from "./agentTurns.js";
+import {
   createCustomAgent,
   updateCustomAgent,
   deleteCustomAgent,
@@ -447,6 +452,7 @@ app.post("/api/chat", async (req, res) => {
   let usage: any = undefined;
   let totalCostUsd: number | undefined;
   let numTurns: number | undefined;
+  let resultSubtype: string | undefined;
 
   try {
     const subAgents = subAgentsFor(agent.id);
@@ -460,7 +466,7 @@ app.post("/api/chat", async (req, res) => {
         cwd: currentCwd,
         model: modelId,
         ...(plan ? { permissionMode: "plan" as const } : {}),
-        ...(subAgents ? { agents: subAgents } : {}),
+        ...delegationOptions(subAgents),
         ...hooksOpt(buildBrowserGuardHook(agent.id)),
       },
     })) {
@@ -482,7 +488,16 @@ app.post("/api/chat", async (req, res) => {
         if (anyMsg.usage) usage = anyMsg.usage;
         if (typeof anyMsg.total_cost_usd === "number") totalCostUsd = anyMsg.total_cost_usd;
         if (typeof anyMsg.num_turns === "number") numTurns = anyMsg.num_turns;
+        if (typeof anyMsg.subtype === "string") resultSubtype = anyMsg.subtype;
       }
+    }
+    // A run that hits the turn cap returns an `error_max_turns` result with no
+    // success text — surface a clear message instead of a blank reply.
+    if (!finalText && isErrorResultSubtype(resultSubtype)) {
+      finalText =
+        resultSubtype === "error_max_turns"
+          ? maxTurnsMessage(numTurns)
+          : `Run stopped early (${resultSubtype}).`;
     }
   } catch (err: any) {
     console.error("chat error:", err);
@@ -588,6 +603,7 @@ app.post("/api/chat/stream", async (req, res) => {
   let streamCost: number | undefined;
   const streamToolUses: Array<{ name: string; input: unknown }> = [];
   let streamFinalText = "";
+  let streamNumTurns: number | undefined;
 
   try {
     for await (const msg of query({
@@ -602,7 +618,7 @@ app.post("/api/chat/stream", async (req, res) => {
         includePartialMessages: true,
         abortController: ac,
         ...(plan ? { permissionMode: "plan" as const } : {}),
-        ...(subAgents ? { agents: subAgents } : {}),
+        ...delegationOptions(subAgents),
         ...hooksOpt(buildBrowserGuardHook(agent.id)),
       },
     })) {
@@ -644,6 +660,16 @@ app.post("/api/chat/stream", async (req, res) => {
         if (typeof anyMsg.result === "string") {
           streamFinalText = anyMsg.result;
           write({ kind: "result", text: anyMsg.result });
+        }
+        if (typeof anyMsg.num_turns === "number") streamNumTurns = anyMsg.num_turns;
+        // No success text + an error subtype => the run was cut short (e.g. the
+        // turn cap). Emit a result line so the bubble isn't left blank.
+        if (!streamFinalText && isErrorResultSubtype(anyMsg.subtype)) {
+          streamFinalText =
+            anyMsg.subtype === "error_max_turns"
+              ? maxTurnsMessage(streamNumTurns)
+              : `Run stopped early (${anyMsg.subtype}).`;
+          write({ kind: "result", text: streamFinalText });
         }
         streamUsage = anyMsg.usage;
         streamCost = anyMsg.total_cost_usd;
@@ -1298,7 +1324,7 @@ app.post("/api/task/:id/run", async (req, res) => {
         cwd: currentCwd,
         model: effectiveModel(agent.id),
         ...(plan ? { permissionMode: "plan" as const } : {}),
-        ...(subAgents ? { agents: subAgents } : {}),
+        ...delegationOptions(subAgents),
         ...hooksOpt(mergeHooks(approvalHook, buildBrowserGuardHook(agent.id))),
       },
     })) {
@@ -1310,6 +1336,14 @@ app.post("/api/task/:id/run", async (req, res) => {
         if (typeof anyMsg.result === "string") finalText = anyMsg.result;
         if (anyMsg.usage) taskUsage = anyMsg.usage;
         if (typeof anyMsg.total_cost_usd === "number") taskCostUsd = anyMsg.total_cost_usd;
+        // Turn cap (or other abnormal stop) with no text => fail the task with a
+        // clear reason rather than completing it with an empty result.
+        if (!finalText && isErrorResultSubtype(anyMsg.subtype)) {
+          agentError =
+            anyMsg.subtype === "error_max_turns"
+              ? maxTurnsMessage(anyMsg.num_turns)
+              : `run stopped early (${anyMsg.subtype})`;
+        }
       }
     }
   } catch (err: any) {
@@ -2007,7 +2041,7 @@ const fireScheduledTask: OnFire = async (
         cwd: fireCwd,
         model: effectiveModel(agent.id),
         ...(plan ? { permissionMode: "plan" as const } : {}),
-        ...(subAgents ? { agents: subAgents } : {}),
+        ...delegationOptions(subAgents),
         ...hooksOpt(mergeHooks(scheduledHook, buildBrowserGuardHook(agent.id))),
       },
     })) {
@@ -2022,6 +2056,15 @@ const fireScheduledTask: OnFire = async (
         if (typeof anyMsg.result === "string") finalText = anyMsg.result;
         if (anyMsg.usage) usage = anyMsg.usage;
         if (typeof anyMsg.total_cost_usd === "number") costUsd = anyMsg.total_cost_usd;
+        // Turn cap (or other abnormal stop) with no text => record it as a fire
+        // error so the scheduled run isn't logged as a silent empty success.
+        if (!finalText && isErrorResultSubtype(anyMsg.subtype)) {
+          agentError = new Error(
+            anyMsg.subtype === "error_max_turns"
+              ? maxTurnsMessage(anyMsg.num_turns)
+              : `run stopped early (${anyMsg.subtype})`,
+          );
+        }
       }
     }
   } catch (err: any) {
@@ -2465,7 +2508,7 @@ const onTelegramMessage = async (ctx: TelegramCtx): Promise<void> => {
         model: effectiveModel(agent.id),
         ...(resumeId ? { resume: resumeId } : {}),
         ...(plan ? { permissionMode: "plan" as const } : {}),
-        ...(subAgents ? { agents: subAgents } : {}),
+        ...delegationOptions(subAgents),
         ...hooksOpt(buildBrowserGuardHook(agent.id)),
       },
     })) {
@@ -2478,6 +2521,14 @@ const onTelegramMessage = async (ctx: TelegramCtx): Promise<void> => {
         if (typeof anyMsg.result === "string") finalText = anyMsg.result;
         if (anyMsg.usage) usage = anyMsg.usage;
         if (typeof anyMsg.total_cost_usd === "number") costUsd = anyMsg.total_cost_usd;
+        // Turn cap (or other abnormal stop) => reply with a clear message
+        // instead of sending an empty Telegram message.
+        if (!finalText && isErrorResultSubtype(anyMsg.subtype)) {
+          finalText =
+            anyMsg.subtype === "error_max_turns"
+              ? maxTurnsMessage(anyMsg.num_turns)
+              : `Run stopped early (${anyMsg.subtype}).`;
+        }
       }
     }
   } catch (err: any) {

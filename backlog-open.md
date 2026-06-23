@@ -10,8 +10,9 @@
 
 | # | Item | Effort | Why |
 |---|------|--------|-----|
-| 1 | **Sub-agent depth limit** | S | No cap on delegation chains today. A pathological prompt could cascade Main → sub → sub. Add a `maxTurns`/depth guard. Pure safety rail. |
 | 2 | **Test-isolate the skills root** | S (one-liner) | `skillInstall.ts` hardcodes `USER_SKILLS_ROOT` from `os.homedir()`, so Skills Studio tests write to the real `~/.claude/skills` (cleaned in `finally`). Make it env-overridable (e.g. `CLAWDDESK_SKILLS_ROOT`) so tests use a temp dir and never touch real user state. |
+
+> **#1 Sub-agent depth limit — ✅ DONE 2026-06-23** (SDK-native `maxTurns` rail, env-overridable `CLAWDDESK_MAX_AGENT_TURNS`). See `backlog-done.md` → Session 2026-06-23.
 
 ## P2 — Complete / extend shipped features
 
