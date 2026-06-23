@@ -6,13 +6,12 @@
 
 ---
 
-## P1 — Robustness & hygiene (do these first)
+## P1 — Robustness & hygiene — ✅ CLEARED 2026-06-23
 
-| # | Item | Effort | Why |
-|---|------|--------|-----|
-| 2 | **Test-isolate the skills root** | S (one-liner) | `skillInstall.ts` hardcodes `USER_SKILLS_ROOT` from `os.homedir()`, so Skills Studio tests write to the real `~/.claude/skills` (cleaned in `finally`). Make it env-overridable (e.g. `CLAWDDESK_SKILLS_ROOT`) so tests use a temp dir and never touch real user state. |
+Both P1 items shipped this session (see `backlog-done.md` → Session 2026-06-23). **P2 is now the top of the queue.**
 
-> **#1 Sub-agent depth limit — ✅ DONE 2026-06-23** (SDK-native `maxTurns` rail, env-overridable `CLAWDDESK_MAX_AGENT_TURNS`). See `backlog-done.md` → Session 2026-06-23.
+- **#1 Sub-agent depth limit** — ✅ DONE. SDK-native `maxTurns` rail, env-overridable `CLAWDDESK_MAX_AGENT_TURNS`.
+- **#2 Test-isolate the skills root** — ✅ DONE. `CLAWDDESK_SKILLS_ROOT` override; tests isolated to a temp dir.
 
 ## P2 — Complete / extend shipped features
 
