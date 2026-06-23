@@ -45,7 +45,8 @@ One OS process. No IPC, no WebSockets (yet), no secondary server. The `claude` b
 |---|---|---|
 | `src/server.ts` | Express app, all `/api/*` routes, SDK call sites for chat + chat/stream + task runs, classifier, .env loader, WhisprDesk proxy, Settings + Sessions + custom-agent CRUD wiring | ~700 |
 | `src/agents.ts` | Built-in agent configs (Main / Comms / Content / Ops) + MODELS table | ~120 |
-| `src/agentRegistry.ts` | Merges built-ins + custom agents at runtime; `findAgent()`, `allAgents()`, `subAgentsFor()`, `isBuiltInAgent()`, `builtInIds()` | ~40 |
+| `src/agentRegistry.ts` | Merges built-ins + custom agents at runtime; `findAgent()`, `allAgents()`, `subAgentsFor()` (stamps each sub-agent with `maxTurns`), `isBuiltInAgent()`, `builtInIds()` | ~45 |
+| `src/agentTurns.ts` | Sub-agent delegation turn cap. `maxAgentTurns()` (env `CLAWDDESK_MAX_AGENT_TURNS`, default 30), `delegationOptions()` (spreads `{agents, maxTurns}` into router `query()` calls), `maxTurnsMessage()`, `isErrorResultSubtype()`. Self-contained (no other `src/` imports) so the offline tests can exercise it directly. The only in-flight rail against a runaway cascade — CostGuard only records post-query | ~65 |
 | `src/customAgents.ts` | SQLite CRUD for `custom_agents` table — create / update / delete / find | ~140 |
 | `src/memory.ts` | better-sqlite3 init (shared db at `data/lab.db`), `memories` schema + CRUD, `memoryBlockFor()` injection helper. (`augmentedSystemPrompt()` moved to `contextPins.ts` to compose memory + pins without a circular import) | ~140 |
 | `src/contextPins.ts` | `context_pins` table + CRUD; `pinnedBlockFor()` re-reads `file` pins from disk each turn (size-capped, no-throw); owns `augmentedSystemPrompt()` composing memory + pins. Imports `db`+`memoryBlockFor` from memory.ts | ~210 |
