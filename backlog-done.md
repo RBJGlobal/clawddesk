@@ -4,7 +4,7 @@
 > Everything below is **shipped and verified** (merged to `main`, covered by the test suite where applicable).
 > Companion file: [`backlog-open.md`](./backlog-open.md) — what's still open, in priority order.
 >
-> **Current state:** 100 automated tests green (98 Playwright smoke + 2 @engine). Repo: `RBJGlobal/clawddesk`. Domain: clawddesk.ai.
+> **Current state:** 107 automated tests green (105 Playwright smoke + 2 @engine). Repo: `RBJGlobal/clawddesk`. Domain: clawddesk.ai.
 
 ---
 
@@ -104,3 +104,14 @@
 | Dead-code sweep clean | `tsc --noUnusedLocals --noUnusedParameters` → 0 (removed a final orphan, `TERMINAL_STATUSES`); plain `tsc --noEmit` → 0 |
 
 **End state:** `tsc` clean (0 errors), 0 unused locals/params, 100 tests green. 16 of 17 review findings fixed; 1 deferred (see `backlog-open.md`).
+
+---
+
+## Session — 2026-06-23
+
+| Item | Notes |
+|------|-------|
+| **P1 #1 — Sub-agent turn cap** | SDK-native `maxTurns` rail against runaway delegation. New self-contained `src/agentTurns.ts` (`maxAgentTurns()` env-overridable via `CLAWDDESK_MAX_AGENT_TURNS`, default 30; `delegationOptions()`; `maxTurnsMessage()`; `isErrorResultSubtype()`). Applied top-level at all 5 delegation `query()` sites + per-`AgentDefinition` in `subAgentsFor`. `error_max_turns` now surfaces a friendly message instead of a blank reply (chat, stream, task, scheduled fire, Telegram). It's a turn / total-work cap, **not** a recursion counter — built-in delegation is provably depth-1. +7 offline tests. Full six-role flow: Architect (advisor) → Developer → Reviewer (SIGN-OFF) → QA (107 green) → Perf (negligible) → Security (SIGN-OFF, net improvement). |
+| better-sqlite3 re-rebuild | Node drifted back 25→24 (ABI 141→137); `npm rebuild better-sqlite3` retargeted current node so the in-process DB tests load. |
+
+**Open risks surfaced (by design, LOW):** non-router agents are intentionally uncapped (only delegation paths get `maxTurns`); a custom agent granted the `Agent` tool can spawn ephemeral SDK sub-agents bounded by their parent's cap but not individually by `subAgentsFor`. Worst-case total work is `cap × fan-out` — finite. Set `CLAWDDESK_MAX_AGENT_TURNS` conservatively for high-fan-out custom routers.
