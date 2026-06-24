@@ -311,7 +311,7 @@ Two cap axes, both per-agent (with global defaults):
 - **Cost cap** — monthly USD ceiling. **OAuth providers bypass this** — Max plan is flat-rate, so dollar accounting against a Max session is nonsense. API-key sessions enforce it.
 - **Rate cap** — requests-per-window ceiling. **Always enforced**, regardless of provider, because rate-limit posture matters even when the cost is $0.
 
-The signature was [locked across two projects](backlog.md) (ClawdDesk + the multi-provider sister app [Clawless](https://clawless.ai/)) so the same `src/costGuard.ts` lifts mechanically into either codebase:
+The signature was locked across two projects (ClawdDesk + the multi-provider sister app [Clawless](https://clawless.ai/)) so the same `src/costGuard.ts` lifts mechanically into either codebase:
 
 ```ts
 costGuard.check(agentId: string, estimatedTokens?: number): {
@@ -388,7 +388,7 @@ Connect [Model Context Protocol](https://modelcontextprotocol.io) servers to an 
 
 Give an agent a real browser (the official [Playwright MCP server](https://github.com/microsoft/playwright-mcp)) behind a permission gate. The 🌐 **Browser** panel toggles it per agent and manages an allow-list of domains; the agent can navigate only to those (subdomains included). Built on the MCP plumbing above ([`src/browser.ts`](src/browser.ts)): when enabled, the Playwright server is added to the agent's `mcpServers` (run `--isolated`, so no access to your real browser cookies), and a `PreToolUse` hook on `browser_navigate` enforces the gate.
 
-This is the highest-risk surface in any agent app — a visited page is untrusted input, and a browser is an SSRF path into your LAN — so the gate is held to a higher bar. A hard **deny-list floor** (localhost, RFC1918 private ranges, link-local + cloud-metadata addresses, non-web protocols) is always enforced and understands obfuscated forms (decimal/hex/IPv4-mapped-IPv6 spellings of a private address are still blocked). There is intentionally **no "open" mode** — an agent may only reach domains you trust. The one honest residual (an allow-listed page that redirects to a private host is not individually re-gated, a documented Playwright limitation) is covered in the [security audit](docs/audits/security-audit-browser.md) and the [user guide](docs/guide/browser-automation.md). Routes: `GET/POST /api/browser/:agentId`, `POST/DELETE /api/browser/:agentId/domain`.
+This is the highest-risk surface in any agent app — a visited page is untrusted input, and a browser is an SSRF path into your LAN — so the gate is held to a higher bar. A hard **deny-list floor** (localhost, RFC1918 private ranges, link-local + cloud-metadata addresses, non-web protocols) is always enforced and understands obfuscated forms (decimal/hex/IPv4-mapped-IPv6 spellings of a private address are still blocked). There is intentionally **no "open" mode** — an agent may only reach domains you trust. The one honest residual (an allow-listed page that redirects to a private host is not individually re-gated, a documented Playwright limitation) is covered in the [user guide](docs/guide/browser-automation.md). Routes: `GET/POST /api/browser/:agentId`, `POST/DELETE /api/browser/:agentId/domain`.
 
 ---
 
@@ -784,7 +784,7 @@ flowchart LR
 - **All user-controlled strings go through `textContent`** — no `innerHTML` interpolation anywhere in `public/app.js`.
 - **Classifier output is whitelisted** against known agent ids before use; never string-interpolated into tool arguments.
 - **Sub-agent delegation cannot escalate tool access** — each sub-agent runs with its own `allowedTools`.
-- **Path traversal on `/api/cwd` / `/api/browse` is intentionally unrestricted** for the personal-use threat profile (user can reach anywhere on their own laptop anyway). **This becomes a BLOCKER the moment a multi-user or commercial path is introduced** — see the [security audit](docs/audits/security-audit-2026-04-23.md).
+- **Path traversal on `/api/cwd` / `/api/browse` is intentionally unrestricted** for the personal-use threat profile (user can reach anywhere on their own laptop anyway). **This becomes a BLOCKER the moment a multi-user or commercial path is introduced.**
 
 ---
 
@@ -863,9 +863,7 @@ clawddesk/
 ├── scripts/
 │   ├── launch-clawddesk.command  # Double-clickable macOS launcher
 │   └── screenshot.mjs        # Playwright script that captures README images
-├── CLAUDE.md                 # Project conventions (six-role dev team, etc.)
 ├── architecture.md           # Technical architecture
-├── backlog.md                # Sequential feature backlog (C##)
 └── (.notes/                  # Private, gitignored — handoffs & draft posts)
 ```
 
@@ -905,7 +903,7 @@ This repo is **not** a product. If you turn it into one, switch to API keys and 
 
 ## What's on the backlog
 
-Core development is **done** — what's left is nice-to-haves. The current implementation covers F1–F7 foundation, C01–C15 (streaming, delegation, tasks, markdown, memory, slash commands, plan mode, WhisprDesk, Settings, custom agents), A1–A3 (cost tracking, session history, conversation export), the **complete C16 "Autonomous Agent Firm" epic**, the **C05 Telegram bridge**, per-agent **context pins / MCP servers / Skills**, and a **⌘K command palette**. See [`backlog.md`](backlog.md) for the full sequential list.
+Core development is **done** — what's left is nice-to-haves. The current implementation covers F1–F7 foundation, C01–C15 (streaming, delegation, tasks, markdown, memory, slash commands, plan mode, WhisprDesk, Settings, custom agents), A1–A3 (cost tracking, session history, conversation export), the **complete C16 "Autonomous Agent Firm" epic**, the **C05 Telegram bridge**, per-agent **context pins / MCP servers / Skills**, and a **⌘K command palette**.
 
 **C16 — Autonomous Agent Firm (epic complete ✅)**
 
@@ -923,7 +921,7 @@ Core development is **done** — what's left is nice-to-haves. The current imple
 - **C12 File rewind UI** — needs streaming-input refactor so the SDK `Query` object stays alive across requests and `Query.rewindFiles(userMessageId)` can fire from a button.
 - **AskUserQuestion inline UI** — surface the SDK's built-in mid-turn clarification tool as an interactive card.
 - **Sub-agent depth limit** — a safety rail against runaway delegation chains.
-- Further-out ideas (full list in `backlog.md` → "Future — not scheduled"): "council mode" multi-agent debate + synthesizer, multi-pane chat, hook inspector timeline, multiple workspaces, onboarding tour, Electron/Tauri packaging.
+- Further-out ideas: "council mode" multi-agent debate + synthesizer, multi-pane chat, hook inspector timeline, multiple workspaces, onboarding tour, Electron/Tauri packaging.
 
 ---
 
@@ -941,7 +939,7 @@ Issues and PRs welcome if you're using this as a learning reference and want to 
 
 That said: **this project deliberately stays small.** Features that require new runtime dependencies, a framework, or a multi-provider abstraction will likely be declined with a "this belongs in a different project" note. The point is to be readable end-to-end in an afternoon.
 
-The six-role dev-team convention the repo uses (Architect → Developer → Reviewer → QA → Performance Analyst → Security Analyst) is documented in [`CLAUDE.md`](CLAUDE.md). You don't need to follow it to contribute, but PRs that include a brief "Reviewer checklist" in the description tend to merge faster.
+The project follows a six-role review convention (Architect → Developer → Reviewer → QA → Performance Analyst → Security Analyst). You don't need to follow it to contribute, but PRs that include a brief "Reviewer checklist" in the description tend to merge faster.
 
 ---
 

@@ -11,7 +11,7 @@ local SQLite file (`data/lab.db`) that never leaves your laptop.
 ## Status legend
 
 - `[Live]`: shipped and working today. Every page in this guide is Live.
-- `[Planned]`: on the backlog, not yet built (see [`backlog.md`](../../backlog.md)).
+- `[Planned]`: on the backlog, not yet built.
   Examples still on the bench: file-rewind UI, an inline AskUserQuestion card,
   a sub-agent depth limit.
 

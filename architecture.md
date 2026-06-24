@@ -248,7 +248,7 @@ No client-side routing. No persistence. Deliberate simplicity.
 
 ## Known constraints
 
-- Personal use only (Max OAuth) — see CLAUDE.md auth note.
+- Personal use only (Max OAuth).
 - Single user, single browser tab. No concurrent users.
 - Restarts lose all chat history and agent sessions.
 - No rate-limit handling beyond what the SDK does for us.
