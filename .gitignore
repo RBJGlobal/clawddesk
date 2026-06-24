@@ -40,6 +40,17 @@ handoff.md
 docs/drafts/
 docs/Agent_Lab/
 
+# Internal governance — kept local, never public (fleet directive 2026-06-24).
+# Files stay on disk (Claude Code still reads CLAUDE.md); they just aren't tracked.
+# Backlogs, internal workflow/process docs, and threat-model audits are internal:
+# they reveal what we're building and can carry security-relevant detail.
+/CLAUDE.md
+/backlog.md
+/backlog-open.md
+/backlog-done.md
+docs/audits/security-audit-*.md
+docs/audits/stabilization-2026-06-16.md
+
 # Editor
 .vscode/
 .idea/
