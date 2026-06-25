@@ -914,13 +914,12 @@ Core development is **done** — what's left is nice-to-haves. The current imple
 | C16c CostGuard budget caps | ✅ Shipped — preflight `check()` with cost + rate axes, OAuth-aware |
 | C16d Per-task approval gates | ✅ Shipped — `PreToolUse` hook pause/approve/reject |
 
-**Also shipped since:** C05 Telegram bridge · Context pins · MCP config UI · Skills panel · ⌘K command palette · composer-toolbar UI refresh.
+**Also shipped since:** C05 Telegram bridge · Context pins · MCP config UI · Skills panel · ⌘K command palette · composer-toolbar UI refresh · sub-agent turn cap (`maxTurns` delegation rail).
 
 **Still on the bench (nice-to-haves)**
 
 - **C12 File rewind UI** — needs streaming-input refactor so the SDK `Query` object stays alive across requests and `Query.rewindFiles(userMessageId)` can fire from a button.
 - **AskUserQuestion inline UI** — surface the SDK's built-in mid-turn clarification tool as an interactive card.
-- **Sub-agent depth limit** — a safety rail against runaway delegation chains.
 - Further-out ideas: "council mode" multi-agent debate + synthesizer, multi-pane chat, hook inspector timeline, multiple workspaces, onboarding tour, Electron/Tauri packaging.
 
 ---
