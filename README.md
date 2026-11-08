@@ -23,7 +23,7 @@ A YouTuber demonstrated a "command center" agent dashboard built on an open-sour
 
 The answer: when Claude is the target model, the SDK collapses the engine layer to a function call. ClawdDesk exists as a concrete, readable example of how thin that layer can be — and a sandbox to explore what the SDK makes easy that used to be hard.
 
-If you need multi-provider (OpenAI / Ollama / OpenRouter / local), this isn't the right starting point — check out **[Clawless](https://clawless.ai/)**, a polished desktop app I'm building with full multi-provider support (Anthropic, OpenAI, Gemini, Ollama, and more). Same author as this lab. *Public launch in ~2 weeks — visit [clawless.ai](https://clawless.ai/) for early-access updates.*
+If you need multi-provider (OpenAI / Ollama / OpenRouter / local), this isn't the right starting point — check out **[Clawless](https://clawless.ai/)**, a polished desktop app I'm building with full multi-provider support (Anthropic, OpenAI, Gemini, Ollama, and more). Same author as this lab. *Coming soon — visit [clawless.ai](https://clawless.ai/) for early-access updates.*
 
 ---
 
@@ -449,12 +449,12 @@ If you have [**WhisprDesk**](https://whisprdesk.com/) running locally, ClawdDesk
 
 > ### 🎙 Don't have WhisprDesk yet?
 >
-> **WhisprDesk** is a local-first macOS dictation app built on the same open-source Whisper engine OpenAI released. It runs entirely on your Mac — audio never leaves the machine — and gives you a system-wide push-to-talk shortcut that works in any text field across any app.
+> **WhisprDesk** is a local-first macOS dictation app built on the same open-source Whisper engine OpenAI released. Choose a local engine and your voice stays on your Mac, or use a cloud provider with your own key. It gives you a system-wide push-to-talk shortcut that works in any text field across any app.
 >
-> - 🔒 **Local-only** — no cloud, no accounts, no telemetry
+> - 🔒 **Your engine, your choice** — a local engine keeps your voice on your Mac; a cloud provider runs on your own key. No telemetry, no account.
 > - ⚡ **Real-time** — transcription lands as you speak
 > - 🧩 **Open gateway** — the same External App Gateway ClawdDesk uses, so any app you write can plug in
-> - 💲 **One-time $29** — no subscription, no seat pricing, lifetime updates
+> - 💲 **$24.99 once** — no subscription; free updates within the major version
 >
 > **→ Grab it at [whisprdesk.com](https://whisprdesk.com/)**
 >
@@ -945,7 +945,7 @@ The project follows a six-role review convention (Architect → Developer → Re
 ## Acknowledgements
 
 - **Anthropic** for the [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview) and for making `@anthropic-ai/claude-agent-sdk` open and approachable.
-- **[WhisprDesk](https://whisprdesk.com/)** — the one-time-$29 local Whisper dictation app that ClawdDesk's voice layer integrates with. Audio stays on your Mac; the gateway pattern means *any* app on your machine can share the STT pipeline.
+- **[WhisprDesk](https://whisprdesk.com/)** — the $24.99 one-time Whisper dictation app that ClawdDesk's voice layer integrates with. Choose a local engine and your voice stays on your Mac, or use a cloud provider with your own key; the gateway pattern means *any* app on your machine can share the STT pipeline.
 - The YouTuber who demonstrated a command-center pattern on top of OpenClaw and got me thinking about how thin this layer could actually be when Claude is the target model.
 - **[Clawless](https://clawless.ai/)** — my own desktop app with full multi-provider AI support, the natural next step if you outgrow this lab's Claude-only scope. Coming soon.
 
