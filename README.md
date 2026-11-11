@@ -786,6 +786,8 @@ flowchart LR
 - **Sub-agent delegation cannot escalate tool access** — each sub-agent runs with its own `allowedTools`.
 - **Path traversal on `/api/cwd` / `/api/browse` is intentionally unrestricted** for the personal-use threat profile (user can reach anywhere on their own laptop anyway). **This becomes a BLOCKER the moment a multi-user or commercial path is introduced.**
 
+Found something that weakens these defaults? See [SECURITY.md](SECURITY.md) for how to report it privately.
+
 ---
 
 ### API contract
@@ -935,6 +937,8 @@ Core development is **done** — what's left is nice-to-haves. The current imple
 ## Contributing
 
 Issues and PRs welcome if you're using this as a learning reference and want to contribute improvements.
+
+Questions that don't fit an issue: **info@clawddesk.ai**. Security reports go to the same address, privately, as described in [SECURITY.md](SECURITY.md).
 
 That said: **this project deliberately stays small.** Features that require new runtime dependencies, a framework, or a multi-provider abstraction will likely be declined with a "this belongs in a different project" note. The point is to be readable end-to-end in an afternoon.
 
