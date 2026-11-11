@@ -16,8 +16,17 @@
     "check:readme": "node scripts/check-readme-fresh.mjs"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "RBJ Global <info@clawddesk.ai>",
+  "license": "MIT",
+  "homepage": "https://github.com/RBJGlobal/clawddesk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RBJGlobal/clawddesk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RBJGlobal/clawddesk/issues",
+    "email": "info@clawddesk.ai"
+  },
   "type": "module",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.322",
