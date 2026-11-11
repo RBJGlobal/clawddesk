@@ -63,7 +63,7 @@ point: most features are *one or two options on a single function call*.
 | Sub-agent delegation | `agents: Record<string, AgentDefinition>` + the `Agent` tool |
 | Token-by-token streaming | `includePartialMessages: true` → `stream_event` |
 | Folder scoping | `cwd` |
-| Per-agent model | `model: "claude-opus-4-8" \| "…sonnet-4-6" \| "…haiku-4-5"` |
+| Per-agent model | `model: "claude-opus-5-5" \| "…sonnet-5-5" \| "…haiku-5-5"` |
 | Browser automation | `mcpServers` (Playwright MCP) + a `PreToolUse` hook (URL gate) |
 | Skills + Skills Studio | `settingSources: ['project','user']` + `skills` name filter |
 | MCP servers | `mcpServers` (stdio / http / sse) |
@@ -88,4 +88,4 @@ top of* the SDK, not `query()` options. Good to show so the diagram is honest:
 
 - **Screenshots:** `docs/screenshots/01-overview.png` … `15-settings-budget.png` (15 hi-res PNGs).
 - **Verify all claims against:** `architecture.md` (topology + data flow) and `README.md` (the feature→primitive table). When this spec and the repo disagree, the repo wins.
-- **Run commands for any "get started" UI:** `git clone https://github.com/RBJGlobal/clawddesk.git && cd clawddesk && npm install && npm run serve` → http://127.0.0.1:3333 (Node 20+, plus the `claude` CLI logged in or `ANTHROPIC_API_KEY`).
+- **Run commands for any "get started" UI:** `git clone https://github.com/RBJGlobal/clawddesk.git && cd clawddesk && npm install && npm run serve` → http://127.0.0.1:3333 (Node 22+, plus the `claude` CLI logged in or `ANTHROPIC_API_KEY`).

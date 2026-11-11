@@ -2692,9 +2692,9 @@ const SLASH_COMMANDS = [
   { cmd: "/clear", desc: "new conversation with this agent" },
   { cmd: "/agents", desc: "list all agents and what they do" },
   { cmd: "/model", desc: "show current model + options" },
-  { cmd: "/model opus", desc: "switch to Opus 4.8 (careful reasoning)" },
-  { cmd: "/model sonnet", desc: "switch to Sonnet 4.6 (balanced default)" },
-  { cmd: "/model haiku", desc: "switch to Haiku 4.5 (fast, cheap)" },
+  { cmd: "/model opus", desc: "switch to Opus 5.5 (careful reasoning)" },
+  { cmd: "/model sonnet", desc: "switch to Sonnet 5.5 (balanced default)" },
+  { cmd: "/model haiku", desc: "switch to Haiku 5.5 (fast, cheap)" },
   { cmd: "/think hard", desc: "alias for /model opus" },
   { cmd: "/think fast", desc: "alias for /model haiku" },
   { cmd: "/think default", desc: "reset this agent to its configured model" },
@@ -2826,8 +2826,8 @@ function handleSlashCommand(text) {
   if (cmd === "think") {
     const agent = state.agents.find((a) => a.id === agentId);
     const mapping = {
-      hard: { id: "claude-opus-4-8", label: "Opus 4.8" },
-      fast: { id: "claude-haiku-4-5", label: "Haiku 4.5" },
+      hard: { id: "claude-opus-5-5", label: "Opus 5.5" },
+      fast: { id: "claude-haiku-5-5", label: "Haiku 5.5" },
       default: { id: agent?.defaultModel, label: null },
     };
     const key = arg.toLowerCase();
@@ -2873,16 +2873,16 @@ function handleSlashCommand(text) {
       say(
         [
           `Current model for **${current?.name}**: \`${current?.model}\``,
-          "Available: `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5`.",
+          "Available: `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`.",
           "Use `/model <id>` (aliases: opus, sonnet, haiku).",
         ].join("\n\n"),
       );
       return true;
     }
     const aliases = {
-      opus: "claude-opus-4-8",
-      sonnet: "claude-sonnet-4-6",
-      haiku: "claude-haiku-4-5",
+      opus: "claude-opus-5-5",
+      sonnet: "claude-sonnet-5-5",
+      haiku: "claude-haiku-5-5",
     };
     const target = aliases[arg.toLowerCase()] || arg;
     const known = state.models.find((m) => target.startsWith(m.id));
@@ -3142,7 +3142,7 @@ function clearAgentForm() {
   agentDescInput.value = "";
   agentSystemPromptInput.value = "";
   agentRouterCheckbox.checked = false;
-  populateAgentModelSelect("claude-sonnet-4-6");
+  populateAgentModelSelect("claude-sonnet-5-5");
   renderToolCheckboxes([]);
   agentDeleteBtn.classList.add("hidden");
   agentModalTitle.textContent = "New agent";

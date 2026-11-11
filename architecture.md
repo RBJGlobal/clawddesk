@@ -137,7 +137,7 @@ Response:
 {
   "reply": "...",
   "toolUses": [{"name": "Read", "input": {...}}],
-  "model": "claude-sonnet-4-6",
+  "model": "claude-sonnet-5-5",
   "apiKeySource": "none",
   "cwd": "/Users/you/project"
 }
@@ -181,10 +181,10 @@ Current defaults:
 
 | Agent | Tools | Model | Why |
 |---|---|---|---|
-| Main | (none) | Sonnet 4.6 | Pure reasoning, routing, triage |
-| Comms | `WebFetch` | Sonnet 4.6 | Draft messages; sometimes pull context |
-| Content | `WebSearch`, `WebFetch` | **Opus 4.8** | Best creative output |
-| Ops | `Read`, `Glob`, `Grep` | Sonnet 4.6 | Read files in current cwd |
+| Main | (none) | Sonnet 5.5 | Pure reasoning, routing, triage |
+| Comms | `WebFetch` | Sonnet 5.5 | Draft messages; sometimes pull context |
+| Content | `WebSearch`, `WebFetch` | **Opus 5.5** | Best creative output |
+| Ops | `Read`, `Glob`, `Grep` | Sonnet 5.5 | Read files in current cwd |
 
 Adding a new agent = one entry in this file. No server changes needed.
 
@@ -201,9 +201,9 @@ Gotcha: **changing `cwd` mid-session confuses the agent** (context includes the 
 ## Model selection
 
 Three models wired via `MODELS` in `agents.ts`:
-- `claude-opus-4-8` — best creative/reasoning
-- `claude-sonnet-4-6` — balanced default
-- `claude-haiku-4-5` — fastest/cheapest
+- `claude-opus-5-5` — best creative/reasoning
+- `claude-sonnet-5-5` — balanced default
+- `claude-haiku-5-5` — fastest/cheapest
 
 Per-agent default in the config file. Runtime override via `POST /api/model/:agentId`. The UI surfaces both: sidebar shows each agent's current model as a chip; `<select>` in the chat header changes it. The model used for each specific reply is echoed back in the response's `model` field and shown in the message footer — so you always know what answered you.
 

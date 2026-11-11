@@ -8,10 +8,10 @@ An agent is a named worker with its own personality, its own set of allowed tool
 
 The four built-ins are:
 
-- **🧭 Main** is the triage and router. It has no direct tools of its own and instead delegates work to the specialists when a request fits their lane. Default model: Sonnet 4.6.
-- **✉️ Comms** drafts emails, messages, replies, and outreach. It has `WebFetch` for pulling context. Default model: Sonnet 4.6.
-- **🎬 Content** handles YouTube scripts, outlines, hooks, and titles. It has `WebSearch` and `WebFetch`, and runs on Opus 4.8 for the strongest creative output.
-- **⚙️ Ops** reads local files in the selected folder using `Read`, `Glob`, and `Grep`. It is read-only and never modifies anything. Default model: Sonnet 4.6.
+- **🧭 Main** is the triage and router. It has no direct tools of its own and instead delegates work to the specialists when a request fits their lane. Default model: Sonnet 5.5.
+- **✉️ Comms** drafts emails, messages, replies, and outreach. It has `WebFetch` for pulling context. Default model: Sonnet 5.5.
+- **🎬 Content** handles YouTube scripts, outlines, hooks, and titles. It has `WebSearch` and `WebFetch`, and runs on Opus 5.5 for the strongest creative output.
+- **⚙️ Ops** reads local files in the selected folder using `Read`, `Glob`, and `Grep`. It is read-only and never modifies anything. Default model: Sonnet 5.5.
 
 ## How to use it
 

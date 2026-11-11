@@ -213,7 +213,7 @@ test.describe("ClawdDesk — new features smoke (no engine)", () => {
         description: "Scratch agent for the delete test",
         systemPrompt: "Say nothing.",
         allowedTools: [],
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-5-5",
       },
     });
     const agent = await created.json();
@@ -1798,7 +1798,7 @@ test.describe("ClawdDesk — new features smoke (no engine)", () => {
         role: "agent",
         text,
         streaming: false,
-        model: "claude-haiku-4-5",
+        model: "claude-haiku-5-5",
         toolUses: [
           { name: "Grep", input: {} },
           { name: "Read", input: {} },
