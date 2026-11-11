@@ -1,5 +1,5 @@
 // Per-task approval gates primitive. Standalone — no Express, no Agent SDK,
-// no host-specific imports. Designed to lift into Clawless if and only if the
+// no host-specific imports. Designed to lift into Clawless Computer if and only if the
 // per-task vs per-tool analysis lands "portable" (see backlog C16d + the
 // `docs/analysis/c16d-per-task-vs-per-tool.md` deliverable).
 //

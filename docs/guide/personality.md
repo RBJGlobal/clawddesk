@@ -9,7 +9,7 @@ and feel completely different: one warm and chatty, one blunt and minimal. This
 panel lets you set that per agent, either by picking a ready-made tone or by
 opening the **Soul Builder** to craft a custom one.
 
-It is the Claude-native port of Clawless's Soul Builder, with one deliberate
+It is the Claude-native port of Clawless Computer's Soul Builder, with one deliberate
 difference: a personality here only adds *voice* and *context* on top of the
 agent's own role. It never changes the agent's name or job. The Architect agent
 stays the Architect; it just gets friendlier, or more direct, if you say so.

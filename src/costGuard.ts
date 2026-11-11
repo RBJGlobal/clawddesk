@@ -1,5 +1,5 @@
 // Budget enforcement primitive (CostGuard). Standalone — no Express, no Agent
-// SDK, no host-specific imports. Designed to lift cleanly into Clawless's B64.
+// SDK, no host-specific imports. Designed to lift cleanly into Clawless Computer's B64.
 // Signature locked rev. 2 across both projects on 2026-04-26:
 //
 //   check(agentId, estimatedTokens?) → { ok, reason?, capType?, remaining? }

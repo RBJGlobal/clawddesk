@@ -1,5 +1,5 @@
 // Telegram bot client primitive. Standalone — node:fetch only, no Express,
-// no Agent SDK, no DB. Designed to lift cleanly into Clawless's stack if/when
+// no Agent SDK, no DB. Designed to lift cleanly into Clawless Computer's stack if/when
 // they want a personal-tier single-channel adapter.
 //
 // Shape:

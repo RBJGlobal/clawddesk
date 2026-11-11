@@ -1,5 +1,5 @@
 // Cron-style scheduler primitive. Standalone — no Express, no Agent SDK,
-// no host-specific imports. Designed to lift cleanly into Clawless's stack
+// no host-specific imports. Designed to lift cleanly into Clawless Computer's stack
 // alongside taskQueue.ts and costGuard.ts.
 //
 // Shape:
@@ -527,7 +527,7 @@ export class Scheduler {
     // Two-step transaction: increment, then read the post-increment value to
     // decide if the threshold tripped. Using `consecutive_failures + 1` in
     // the UPDATE (not a SELECT-then-UPDATE) eliminates the TOCTOU window the
-    // SELECT-based version had — useful for the Clawless lift where multiple
+    // SELECT-based version had — useful for the Clawless Computer lift where multiple
     // DB connections may race. The `enabled = 1` guard is on BOTH branches so
     // a stale fire that resolves after a manual pause cannot bump
     // consecutive_failures or auto-pause-clobber paused_reason='manual'.

@@ -1,6 +1,6 @@
 // Durable task queue with atomic checkout. Standalone primitive — no Express,
 // no Agent SDK, no host-specific imports. Designed to be lifted directly into
-// Clawless's B54 Phase B. Schema and API locked rev. 2 across both projects.
+// Clawless Computer's B54 Phase B. Schema and API locked rev. 2 across both projects.
 //
 // See .notes/c16b-task-queue-design.md for the full design rationale.
 
