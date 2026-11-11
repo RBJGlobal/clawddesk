@@ -4,7 +4,7 @@
 // one from the bundled starter pack, or paste an external SKILL.md.
 //
 // Deliberate scope (see .notes/clawless-port-analysis.md §3b): we do NOT port
-// Clawless's ClawHub registry — its skills use OpenClaw's tool vocabulary
+// Clawless Computer's ClawHub registry — its skills use OpenClaw's tool vocabulary
 // (`fs_write_file`/`cmd_bash`/`browser_open`) that doesn't exist in the Claude
 // Agent SDK, so a fetch-and-install would produce broken skills. What ports
 // cleanly is the *install-review UX* and a *static security scan*. There is NO

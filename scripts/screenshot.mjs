@@ -186,7 +186,7 @@ await snap("12-new-agent-editor");
 await page.locator("#agent-cancel").click();
 
 // ---------------------------------------------------------------------------
-// New-surface captures (added with the 5 Clawless ports + rebrand). Each opens
+// New-surface captures (added with the 5 Clawless Computer ports + rebrand). Each opens
 // a modal, puts it in a representative state, snaps, and closes.
 // ---------------------------------------------------------------------------
 

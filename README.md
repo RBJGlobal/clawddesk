@@ -23,7 +23,7 @@ A YouTuber demonstrated a "command center" agent dashboard built on an open-sour
 
 The answer: when Claude is the target model, the SDK collapses the engine layer to a function call. ClawdDesk exists as a concrete, readable example of how thin that layer can be — and a sandbox to explore what the SDK makes easy that used to be hard.
 
-If you need multi-provider (OpenAI / Ollama / OpenRouter / local), this isn't the right starting point — check out **[Clawless](https://clawless.ai/)**, a polished desktop app I'm building with full multi-provider support (Anthropic, OpenAI, Gemini, Ollama, and more). Same author as this lab. *Coming soon — visit [clawless.ai](https://clawless.ai/) for early-access updates.*
+If you need multi-provider (OpenAI / Ollama / OpenRouter / local), this isn't the right starting point — check out **[Clawless Computer](https://clawless.ai/)**, a polished desktop app I'm building with full multi-provider support (Anthropic, OpenAI, Gemini, Ollama, and more). Same author as this lab. *Coming soon — visit [clawless.ai](https://clawless.ai/) for early-access updates.*
 
 ---
 
@@ -311,7 +311,7 @@ Two cap axes, both per-agent (with global defaults):
 - **Cost cap** — monthly USD ceiling. **OAuth providers bypass this** — Max plan is flat-rate, so dollar accounting against a Max session is nonsense. API-key sessions enforce it.
 - **Rate cap** — requests-per-window ceiling. **Always enforced**, regardless of provider, because rate-limit posture matters even when the cost is $0.
 
-The signature was locked across two projects (ClawdDesk + the multi-provider sister app [Clawless](https://clawless.ai/)) so the same `src/costGuard.ts` lifts mechanically into either codebase:
+The signature was locked across two projects (ClawdDesk + the multi-provider sister app [Clawless Computer](https://clawless.ai/)) so the same `src/costGuard.ts` lifts mechanically into either codebase:
 
 ```ts
 costGuard.check(agentId: string, estimatedTokens?: number): {
@@ -394,7 +394,7 @@ This is the highest-risk surface in any agent app — a visited page is untruste
 
 ### Agent personality
 
-Give an agent a **voice** without touching its job. The 🎭 **Personality** panel sets a per-agent tone — five presets (Friendly / Professional / Concise / Encouraging / Direct) or a custom **Soul Builder** profile (communication style, who you are, standing notes, extra "core truths"). Ported from Clawless's Soul Builder, but identity-preserving: the layer adds voice and context on top of each agent's own role, it never renames the agent. Composed at the same chokepoint as memory + pins — `augmentedSystemPrompt()` in [`src/contextPins.ts`](src/contextPins.ts) — as `base → <agent-personality> → <persistent-memory> → <pinned-context>`.
+Give an agent a **voice** without touching its job. The 🎭 **Personality** panel sets a per-agent tone — five presets (Friendly / Professional / Concise / Encouraging / Direct) or a custom **Soul Builder** profile (communication style, who you are, standing notes, extra "core truths"). Ported from Clawless Computer's Soul Builder, but identity-preserving: the layer adds voice and context on top of each agent's own role, it never renames the agent. Composed at the same chokepoint as memory + pins — `augmentedSystemPrompt()` in [`src/contextPins.ts`](src/contextPins.ts) — as `base → <agent-personality> → <persistent-memory> → <pinned-context>`.
 
 The safety pattern is the point: a personality is **editable tone over locked guardrails**. Three sections (privacy, boundaries, continuity) always concatenate and **cannot be removed or overridden** — you can make an agent friendlier, you can't talk it out of refusing prompt injection or leaking its system prompt. Custom "core truths" are *additive*, never replacing the locked ones, and all custom text is sanitized (control / zero-width / BiDi / homoglyph-bracket stripping) before it reaches the prompt; an unknown preset key collapses to `none` server-side. Logic in [`src/personality.ts`](src/personality.ts); covered by 7 tests incl. a locked-section bypass regression. See the [user guide](docs/guide/personality.md). Routes: `GET/POST /api/personality/:agentId`.
 
@@ -404,7 +404,7 @@ The safety pattern is the point: a personality is **editable tone over locked gu
 
 Enable [Agent Skills](https://code.claude.com/docs/en/skills) per agent. [`src/skills.ts`](src/skills.ts) scans `{cwd}/.claude/skills/*/SKILL.md` and `~/.claude/skills/*` (parsing each frontmatter), and when an agent has ≥1 skill enabled, runs its `query()` with `settingSources: ['project','user']` + a `skills` name filter. The 🧩 **Skills** modal lists discovered skills with a per-agent toggle + Rescan. Routes: `GET /api/skills`, `POST /api/skills/toggle`.
 
-**Skills Studio** (the **＋ Add a skill** tab) creates skills without leaving the app — a **Skill Builder** form, a bundled **starter pack** (commit-helper, changelog-writer, code-explainer), or **paste a SKILL.md**. Everything installs a standard `SKILL.md` into `~/.claude/skills` ([`src/skillInstall.ts`](src/skillInstall.ts)); installed skills get a 🗑 delete. Pasted (external) content runs through a **static security scan** — a heuristic lint flagging curl-pipe-shell, `rm -rf`, reverse shells, credential reads — and a high-severity finding blocks install behind an "I reviewed this" gate the server enforces too. Deliberately **not ported from Clawless**: the ClawHub registry (its OpenClaw tool vocabulary `fs_write_file`/`cmd_bash` doesn't exist in the SDK, so those skills would load broken) and VirusTotal (useless on instruction text + would upload your skill off-device, breaking the privacy promise). Every write/delete is path-confined to the skills root (resolve + prefix-check, same floor as the browser SSRF gate); folder names are `[a-z0-9-]` only. Routes: `POST /api/skills/{scan,install}`, `GET /api/skills/starter`, `DELETE /api/skills/:slug`. See the [user guide](docs/guide/skills.md).
+**Skills Studio** (the **＋ Add a skill** tab) creates skills without leaving the app — a **Skill Builder** form, a bundled **starter pack** (commit-helper, changelog-writer, code-explainer), or **paste a SKILL.md**. Everything installs a standard `SKILL.md` into `~/.claude/skills` ([`src/skillInstall.ts`](src/skillInstall.ts)); installed skills get a 🗑 delete. Pasted (external) content runs through a **static security scan** — a heuristic lint flagging curl-pipe-shell, `rm -rf`, reverse shells, credential reads — and a high-severity finding blocks install behind an "I reviewed this" gate the server enforces too. Deliberately **not ported from Clawless Computer**: the ClawHub registry (its OpenClaw tool vocabulary `fs_write_file`/`cmd_bash` doesn't exist in the SDK, so those skills would load broken) and VirusTotal (useless on instruction text + would upload your skill off-device, breaking the privacy promise). Every write/delete is path-confined to the skills root (resolve + prefix-check, same floor as the browser SSRF gate); folder names are `[a-z0-9-]` only. Routes: `POST /api/skills/{scan,install}`, `GET /api/skills/starter`, `DELETE /api/skills/:slug`. See the [user guide](docs/guide/skills.md).
 
 **Emergent skills (B68)** turn work you've already done into reusable skills. After a turn that used ≥3 tools, a **free 💡 nudge** appears under the reply; clicking it distills that turn into a draft `SKILL.md` via a cheap Haiku call ([`src/emergentSkills.ts`](src/emergentSkills.ts)) that lands in a **💡 Proposed** review tab — never auto-installed. Two design choices the advisor sharpened at the architect gate: (1) `outputFormat: json_schema` **does not work on the OAuth/Max path** (verified by probe — returns prose), so distillation uses a fenced-JSON prompt + a **brace-matching extractor** (robust against prose, fences, and ``` inside the body); (2) a proposal is distilled from a transcript that may carry **untrusted content the agent browsed**, so accept is **paste-tier gated** (server returns 409 on a high-severity draft without acknowledgement), and `allowedTools` is **anchored to the tools actually observed** in the turn — the model can't invent a tool name. Routes: `POST /api/skills/propose`, `GET /api/skills/proposals`, `POST /api/skills/proposals/:id/accept`, `DELETE /api/skills/proposals/:id`.
 
@@ -743,7 +743,7 @@ stateDiagram-v2
   end note
 ```
 
-The 5-state enum is the wire shape across both ClawdDesk and Clawless's task queue (B54). The `running` state from C03's in-memory version was dropped — it was a worker-side concern, not queue-side. `failed` is reachable only after `attempts ≥ max_attempts`; otherwise `fail()` loops back to `queued`.
+The 5-state enum is the wire shape across both ClawdDesk and Clawless Computer's task queue (B54). The `running` state from C03's in-memory version was dropped — it was a worker-side concern, not queue-side. `failed` is reachable only after `attempts ≥ max_attempts`; otherwise `fail()` loops back to `queued`.
 
 ---
 
@@ -929,7 +929,7 @@ Core development is **done** — what's left is nice-to-haves. The current imple
 ## What this is not
 
 - **Not a product.** No service, no accounts, no billing, no hosted version.
-- **Not multi-provider.** Claude only. For OpenAI / Ollama / OpenRouter / local models, the natural next step is **[Clawless](https://clawless.ai/)** — a commercial desktop app from the same author with full multi-provider support. Coming soon.
+- **Not multi-provider.** Claude only. For OpenAI / Ollama / OpenRouter / local models, the natural next step is **[Clawless Computer](https://clawless.ai/)** — a commercial desktop app from the same author with full multi-provider support. Coming soon.
 - **Not for anyone else's Max plan.** If you want to build a Max-plan-powered app for other people, you can't — see [Authentication](#authentication).
 
 ---
@@ -951,7 +951,7 @@ The project follows a six-role review convention (Architect → Developer → Re
 - **Anthropic** for the [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview) and for making `@anthropic-ai/claude-agent-sdk` open and approachable.
 - **[WhisprDesk](https://whisprdesk.com/)** — the $24.99 one-time Whisper dictation app that ClawdDesk's voice layer integrates with. Choose a local engine and your voice stays on your Mac, or use a cloud provider with your own key; the gateway pattern means *any* app on your machine can share the STT pipeline.
 - The YouTuber who demonstrated a command-center pattern on top of OpenClaw and got me thinking about how thin this layer could actually be when Claude is the target model.
-- **[Clawless](https://clawless.ai/)** — my own desktop app with full multi-provider AI support, the natural next step if you outgrow this lab's Claude-only scope. Coming soon.
+- **[Clawless Computer](https://clawless.ai/)** — my own desktop app with full multi-provider AI support, the natural next step if you outgrow this lab's Claude-only scope. Coming soon.
 
 ---
 

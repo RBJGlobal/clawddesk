@@ -1,10 +1,10 @@
 // Agent personality — a per-agent "voice" layer composed into the system
-// prompt, ported from Clawless's Soul Builder (B57). Two ways to set it:
+// prompt, ported from Clawless Computer's Soul Builder (B57). Two ways to set it:
 //   - a PRESET tone (friendly / professional / concise / ...), or
 //   - a CUSTOM profile built in the Soul Builder (communication style, notes
 //     about the user, extra "core truths").
 //
-// The key safety pattern carried over verbatim from Clawless: a personality is
+// The key safety pattern carried over verbatim from Clawless Computer: a personality is
 // EDITABLE tone layered over LOCKED security sections (privacy, boundaries,
 // continuity) that the user cannot remove or override. You can give an agent a
 // friendlier voice; you cannot talk it out of refusing prompt injection or
@@ -103,7 +103,7 @@ const LOCKED_CONTINUITY =
 
 // ============================================================================
 // Sanitization — strip prompt-injection vectors from user-supplied text before
-// it goes into the system prompt. Ported from Clawless's sanitizePath.
+// it goes into the system prompt. Ported from Clawless Computer's sanitizePath.
 // ============================================================================
 
 export function sanitizeText(input: string): string {
@@ -131,7 +131,7 @@ export function sanitizeText(input: string): string {
 
 // Build the personality system-prompt block for a custom profile. Editable
 // sections (communication style, about-the-user, extra truths) are sanitized;
-// the locked sections always append. NOTE: unlike Clawless, CAL's profile does
+// the locked sections always append. NOTE: unlike Clawless Computer, CAL's profile does
 // NOT override the agent's identity — each agent keeps its own name/role from
 // its base system prompt, and this layer only adds voice + context + guardrails.
 function buildCustomProfilePrompt(profile: CustomProfile): string {

@@ -218,7 +218,7 @@ The SDK checks in order:
 
 Currently the env var is unset, so every call rides on the Max subscription via OAuth. The response's `apiKeySource` field is `"none"` when OAuth is active — we translate that to "Max plan · subscription" in the UI for clarity.
 
-**Commercial distribution would require API key auth.** Not a todo for this project; that's Clawless territory.
+**Commercial distribution would require API key auth.** Not a todo for this project; that's Clawless Computer territory.
 
 ---
 
