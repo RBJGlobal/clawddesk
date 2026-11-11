@@ -150,8 +150,18 @@ test.describe("ClawdDesk — new features smoke (no engine)", () => {
   test("slash command /export refuses on empty conversation", async ({ page }) => {
     await page.goto("/");
     await page.locator(".agent-item", { hasText: "Main" }).click();
-    // Make sure the conversation is empty
-    await page.locator("#reset-btn").click();
+    // Make sure the conversation is empty. The reset handler awaits the
+    // POST /api/reset round trip before it clears the local conversation and
+    // re-renders, so typing straight after the click races it: the /export
+    // reply lands first and the reset then wipes it. Wait for the round trip
+    // and the empty state before typing.
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes("/api/reset/") && r.request().method() === "POST",
+      ),
+      page.locator("#reset-btn").click(),
+    ]);
+    await expect(page.locator(".empty-state")).toBeVisible();
 
     await page.locator("#input").fill("/export");
     await page.keyboard.press("Enter");
