@@ -292,6 +292,14 @@ async function classifyTask(description: string): Promise<string> {
 - content — YouTube scripts, blog posts, titles, hooks, creative writing, thumbnails
 - ops — reading local files, summarizing a project folder, file search
 
+Writing or drafting any email, message or reply is comms, even when it mentions a file or a project.
+
+Examples:
+- "Write a follow-up email to a customer who went quiet" -> comms
+- "Give me five title ideas for my SDK video" -> content
+- "Summarize the README in this folder" -> ops
+- "What should I work on next?" -> main
+
 Respond with exactly ONE word: main, comms, content, or ops. No punctuation, no explanation.`;
 
   let chosen = "main";
@@ -307,17 +315,20 @@ Respond with exactly ONE word: main, comms, content, or ops. No punctuation, no 
     })) {
       const anyMsg = msg as any;
       if ("result" in anyMsg && typeof anyMsg.result === "string") {
+        // The model is asked for one word but sometimes keeps talking. Take
+        // the first token; if that is not an agent id, fall back to the first
+        // whole-word agent id anywhere in the reply. Substring matching was
+        // the old fallback and could pick "ops" out of words like "drops".
         const raw = anyMsg.result.trim().toLowerCase();
-        const compact = raw.replace(/[^a-z]/g, "");
-        if (AGENTS[compact]) {
-          chosen = compact;
+        const first = (raw.split(/\s+/)[0] ?? "").replace(/[^a-z]/g, "");
+        // Object.hasOwn, not a bare lookup: a reply of "constructor" would
+        // otherwise pass through Object.prototype and leave the whitelist.
+        if (Object.hasOwn(AGENTS, first)) {
+          chosen = first;
         } else {
-          for (const id of Object.keys(AGENTS)) {
-            if (raw.includes(id)) {
-              chosen = id;
-              break;
-            }
-          }
+          const ids = Object.keys(AGENTS).join("|");
+          const m = raw.match(new RegExp(`\\b(${ids})\\b`));
+          if (m && Object.hasOwn(AGENTS, m[1])) chosen = m[1];
         }
       }
     }
@@ -1414,15 +1425,17 @@ app.post("/api/task/:id/run", async (req, res) => {
 });
 
 app.delete("/api/task/:id", (req, res) => {
-  // Hard-delete is constrained to terminal states. Deleting a checked_out
-  // row would orphan a worker mid-execution and crash its terminal update.
-  // For non-terminal rows, callers should cancel via the queue instead
-  // (currently no UI surface — UI already disables Delete on active tasks).
+  // Hard-delete is allowed for terminal states and for `queued`. A queued
+  // row has no worker (checkoutById claims rows atomically, so a delete
+  // either wins or loses the race cleanly). Deleting a checked_out row would
+  // orphan a worker mid-execution and crash its terminal update, so active
+  // rows still get a 409. Before 2026-11-11 queued rows also 409'd, which the
+  // UI and the engine test both ignored, leaving stale cards behind.
   const result = db
     .prepare(
       `DELETE FROM tasks
         WHERE id = ?
-          AND status IN ('done', 'failed', 'cancelled')`,
+          AND status IN ('queued', 'done', 'failed', 'cancelled')`,
     )
     .run(req.params.id);
   if (result.changes === 0) {
@@ -1430,7 +1443,7 @@ app.delete("/api/task/:id", (req, res) => {
     if (!current) return res.json({ ok: true }); // already gone — idempotent
     return res
       .status(409)
-      .json({ error: "task is not in a terminal state", task: toApiTask(current) });
+      .json({ error: "task is running; wait for it to finish", task: toApiTask(current) });
   }
   res.json({ ok: true });
 });
