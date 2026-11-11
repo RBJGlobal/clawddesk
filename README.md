@@ -518,7 +518,7 @@ Want a custom icon? Right-click the file on Desktop → **Get Info** → drag a 
 ### System topology
 
 ```
-Browser (vanilla JS)  →  Express server (:3333)  →  Claude Agent SDK  →  Claude Code CLI
+Browser (vanilla JS)  →  Express server (:3333)  →  Claude Agent SDK  →  Claude Code runtime
       │                        │                          │                    │
       │                 /api/* routes                query({...})        OAuth session
       │                        │                          │                (or API key)

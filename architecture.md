@@ -213,7 +213,7 @@ Per-agent default in the config file. Runtime override via `POST /api/model/:age
 
 The SDK checks in order:
 1. `ANTHROPIC_API_KEY` env var (if set, uses it)
-2. Falls back to the `claude` CLI's stored OAuth session (`~/.claude/...`)
+2. Falls back to the OAuth session stored by the `claude` CLI login (`~/.claude/...`). The SDK runs its own bundled Claude Code runtime (a per-platform npm package) and reads that same session.
 3. If neither, errors out
 
 Currently the env var is unset, so every call rides on the Max subscription via OAuth. The response's `apiKeySource` field is `"none"` when OAuth is active — we translate that to "Max plan · subscription" in the UI for clarity.
@@ -243,6 +243,8 @@ No client-side routing. No persistence. Deliberate simplicity.
 - **Why Express 5 and not Fastify / Hono?** Express is the least surprising thing in Node. This is a learning project.
 - **Why one server instead of separate main/renderer (Electron)?** Electron is the right call when you need native OS integration (filesystem, menus, notifications). The Agent SDK already has filesystem access via `Read/Write/Bash`; notifications + packaging are a later concern tracked as `C07`.
 - **Why in-memory state?** Fastest path to seeing the concepts. Persistence (C04) upgrades this to SQLite when the agents start remembering useful things across restarts.
+- **Why `alwaysLoad: true` on every MCP server?** Agent SDK 0.3.142 made MCP connects non-blocking, so a slow server reports `pending` on the first turn with its tools absent. `alwaysLoad` makes startup wait up to the 5 s connect timeout, which keeps the tool surface present and legible on turn 1 and lets the Test button read a real status. (SDK bumped to 0.3.322 on 2026-11-10.)
+- **Why every `query()` pins `permissionMode` and passes `systemPrompt` as `{ type: "custom", snapshot: false }`?** Agent SDK 0.3.286 leaves an omitted `permissionMode` to Claude Code, so a settings `defaultMode` (loaded for agents with skills via `settingSources`) or a provider default could start a session in `auto`, where a classifier may approve tools outside `allowedTools`. Pinning `default` (or `plan`) keeps the allowlist as the only gate, which is how 0.2.x behaved; on a first-party Max session with no `defaultMode` the SDK still reports `default` when the option is omitted, so this is a guard, not a fix for a live regression. SDK 0.3.267 records a bare-string system prompt at session start and ignores later changes on `resume` until compaction; `augmentedSystemPrompt()` is rebuilt every turn (memory, pins, personality, edited agent prompts), so `snapshot: false` keeps per-request rendering.
 
 ---
 

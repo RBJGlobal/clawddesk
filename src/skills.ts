@@ -70,8 +70,16 @@ function parseFrontmatter(
   };
 }
 
-function scanSkillsDir(baseDir: string, source: "project" | "user"): DiscoveredSkill[] {
-  const skillsRoot = path.join(baseDir, ".claude", "skills");
+// User skills root. `CLAWDDESK_SKILLS_ROOT` is the same operator-set override
+// skillInstall.ts honours, so the test suite's throwaway install dir is also
+// the dir discovery reads; without it, a test install landed in the temp root
+// while discovery kept scanning the real ~/.claude/skills and never saw it.
+const SKILLS_ROOT_OVERRIDE = process.env.CLAWDDESK_SKILLS_ROOT?.trim();
+const USER_SKILLS_ROOT = SKILLS_ROOT_OVERRIDE
+  ? path.resolve(SKILLS_ROOT_OVERRIDE)
+  : path.join(os.homedir(), ".claude", "skills");
+
+function scanSkillsRoot(skillsRoot: string, source: "project" | "user"): DiscoveredSkill[] {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(skillsRoot, { withFileTypes: true });
@@ -93,8 +101,8 @@ function scanSkillsDir(baseDir: string, source: "project" | "user"): DiscoveredS
 // shadow user skills (~/.claude/skills) on name collision, matching how the
 // SDK resolves them.
 export function discoverSkills(cwd: string): DiscoveredSkill[] {
-  const project = scanSkillsDir(cwd, "project");
-  const user = scanSkillsDir(os.homedir(), "user");
+  const project = scanSkillsRoot(path.join(cwd, ".claude", "skills"), "project");
+  const user = scanSkillsRoot(USER_SKILLS_ROOT, "user");
   const seen = new Set(project.map((s) => s.name));
   const merged = [...project];
   for (const u of user) {
