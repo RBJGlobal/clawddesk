@@ -11,12 +11,26 @@ db.exec(`
     description   TEXT NOT NULL DEFAULT '',
     system_prompt TEXT NOT NULL,
     allowed_tools TEXT NOT NULL DEFAULT '[]',
-    model         TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
+    model         TEXT NOT NULL DEFAULT 'claude-sonnet-5-5',
     is_router     INTEGER NOT NULL DEFAULT 0,
     created_at    INTEGER NOT NULL,
     updated_at    INTEGER NOT NULL
   );
 `);
+
+// One-time migration (2026-11-11): rows saved before the move to the 5.5
+// generation may hold 4.x model IDs. The model <select> has no option for
+// them, so the UI would show the first option while the old model actually
+// ran. Map each to the same tier's current model; idempotent on every boot.
+const MODEL_RENAMES: Record<string, string> = {
+  "claude-opus-4-8": "claude-opus-5-5",
+  "claude-sonnet-4-6": "claude-sonnet-5-5",
+  "claude-haiku-4-5": "claude-haiku-5-5",
+};
+{
+  const rename = db.prepare("UPDATE custom_agents SET model = ? WHERE model = ?");
+  for (const [from, to] of Object.entries(MODEL_RENAMES)) rename.run(to, from);
+}
 
 export type CustomAgentInput = {
   name: string;
@@ -94,7 +108,7 @@ export function createCustomAgent(
     description: (input.description || "").trim(),
     system_prompt: systemPrompt,
     allowed_tools: JSON.stringify(input.allowedTools ?? []),
-    model: input.model || "claude-sonnet-4-6",
+    model: input.model || "claude-sonnet-5-5",
     is_router: input.isRouter ? 1 : 0,
     created_at: now,
     updated_at: now,

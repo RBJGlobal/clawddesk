@@ -270,6 +270,12 @@ function pruneCompletedTasks(cap = TASK_RETENTION_CAP) {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 
+// Agent SDK 0.3.302 turned fork subagents (`subagent_type: "fork"`, a copy of
+// the parent with its full context) on by default in SDK sessions. C01's
+// delegation design is one level of named sub-agents under the maxTurns rail,
+// so keep forks off unless the operator sets the variable themselves.
+process.env.CLAUDE_CODE_FORK_SUBAGENT ??= "0";
+
 const app = express();
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR));
@@ -294,7 +300,7 @@ Respond with exactly ONE word: main, comms, content, or ops. No punctuation, no 
       prompt: `Task: ${description}`,
       options: {
         systemPrompt,
-        model: "claude-haiku-4-5",
+        model: "claude-haiku-5-5",
         allowedTools: [],
         permissionMode: "default" as const,
       },
@@ -327,7 +333,7 @@ function expandPath(p: string): string {
 }
 
 function effectiveModel(agentId: string): string {
-  return modelOverride.get(agentId) ?? findAgent(agentId)?.model ?? "claude-sonnet-4-6";
+  return modelOverride.get(agentId) ?? findAgent(agentId)?.model ?? "claude-sonnet-5-5";
 }
 
 app.get("/api/agents", (_req, res) => {
@@ -884,7 +890,7 @@ app.post("/api/mcp/:id/test", async (req, res) => {
         mcpServers: singleServerConfig(server),
         allowedTools: [],
         permissionMode: "default" as const,
-        model: "claude-haiku-4-5",
+        model: "claude-haiku-5-5",
         abortController: ac,
         maxTurns: 1,
       },
@@ -1103,7 +1109,7 @@ app.post("/api/skills/propose", async (req, res) => {
       prompt: userPrompt,
       options: {
         systemPrompt: DISTILL_SYSTEM_PROMPT,
-        model: "claude-haiku-4-5",
+        model: "claude-haiku-5-5",
         allowedTools: [],
         permissionMode: "default" as const,
         cwd: currentCwd,

@@ -38,7 +38,7 @@ Each feature maps to **one or two options** on the SDK's `query()` call. Reading
 | [Sub-agent delegation](#sub-agent-delegation) | `agents: Record<string, AgentDefinition>` + `Agent` tool |
 | [Token-by-token streaming](#token-by-token-streaming) | `includePartialMessages: true` → `stream_event` messages |
 | [Folder scoping](#folder-scoping) | `cwd` |
-| [Per-agent model selection](#per-agent-model-selection) | `model: "claude-opus-4-8" \| "claude-sonnet-4-6" \| "claude-haiku-4-5"` |
+| [Per-agent model selection](#per-agent-model-selection) | `model: "claude-opus-5-5" \| "claude-sonnet-5-5" \| "claude-haiku-5-5"` |
 | [Task queue with auto-routing](#task-queue-with-auto-routing) | One-shot Haiku `query()` as a classifier |
 | [Durable task queue (SQLite + atomic checkout)](#durable-task-queue) | Tasks survive restart; lease-based crash recovery; concurrent-safe checkout |
 | [Cron-style scheduler](#scheduler) | `node`-side tick loop fires `query()` on a cron; OAuth-rotation healthcheck; **result destinations** (in-app/file/telegram) + **run history** |
@@ -71,7 +71,7 @@ Four built-in specialists, each defined by a ~20-line object in [`src/agents.ts`
 
 - **🧭 Main** — triage + router, no direct tools
 - **✉️ Comms** — drafts messages, `WebFetch`
-- **🎬 Content** — YouTube / long-form writing, `WebSearch` + `WebFetch`, **Opus 4.8**
+- **🎬 Content** — YouTube / long-form writing, `WebSearch` + `WebFetch`, **Opus 5.5**
 - **⚙️ Ops** — reads local files in the selected folder, `Read` / `Glob` / `Grep`, read-only
 
 The bottom of the sidebar has a prominent gradient **+ New agent** button — spawning specialists is a first-class operation, not a hidden escape hatch.
@@ -127,7 +127,7 @@ Click the `📁` pill in the chat header to open the picker. Browse, drill down,
 
 ### Per-agent model selection
 
-Each agent has a **default model** in `agents.ts`. The header `<select>` overrides it per-agent at runtime. The reply's footer shows exactly which model answered (`🧠 Sonnet 4.6`) and how it authenticated (`🔐 Max plan · subscription` for OAuth, or `🔑 API key (...)` for a key).
+Each agent has a **default model** in `agents.ts`. The header `<select>` overrides it per-agent at runtime. The reply's footer shows exactly which model answered (`🧠 Sonnet 5.5`) and how it authenticated (`🔐 Max plan · subscription` for OAuth, or `🔑 API key (...)` for a key).
 
 Switching models clears that agent's session — the new model starts with a fresh context, not a context primed for the old one.
 
@@ -281,8 +281,8 @@ Type `/` and a **live autocomplete popover** appears above the composer — same
 | `/agents` | List all agents with their descriptions and default models |
 | `/model` | Show current model + available options |
 | `/model <id>` | Switch model for this agent. Aliases: `opus`, `sonnet`, `haiku` |
-| `/think hard` | Ergonomic alias: switch to Opus 4.8 (careful reasoning) |
-| `/think fast` | Alias: switch to Haiku 4.5 (snappy, cheap) |
+| `/think hard` | Ergonomic alias: switch to Opus 5.5 (careful reasoning) |
+| `/think fast` | Alias: switch to Haiku 5.5 (snappy, cheap) |
 | `/think default` | Reset to the agent's configured default |
 | `/plan on\|off` | Toggle plan mode for this agent |
 | `/export` | Download this chat as Markdown |
@@ -506,7 +506,7 @@ First double-click: macOS Gatekeeper may block an unsigned script. Right-click t
 Want a custom icon? Right-click the file on Desktop → **Get Info** → drag a PNG onto the tiny icon in the top-left of the Info window.
 
 ### Requirements
-- **Node.js 20+** (tested on 24.14.1)
+- **Node.js 22+** (better-sqlite3 13 needs it; tested on 24.22.1)
 - **One** of:
   - An Anthropic API key from [console.anthropic.com](https://console.anthropic.com)
   - A logged-in [Claude Code CLI](https://code.claude.com/docs/en/setup) (`claude` binary) — for personal use on your own machine
@@ -641,7 +641,7 @@ sequenceDiagram
 
 **Wire shape** (real sample):
 ```
-{"kind":"init","sessionId":"3cf37180-...","model":"claude-opus-4-8","apiKeySource":"none"}
+{"kind":"init","sessionId":"3cf37180-...","model":"claude-opus-5-5","apiKeySource":"none"}
 {"kind":"text_delta","text":"Here are 3 You"}
 {"kind":"text_delta","text":"Tube title ideas:\n\n1. I Built an AI Agent in "}
 {"kind":"text_delta","text":"10 Minutes\n2. Claude Agent SDK: The Missing Begin"}

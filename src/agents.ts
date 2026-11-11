@@ -11,9 +11,9 @@ export type AgentConfig = {
 };
 
 export const MODELS = [
-  { id: "claude-opus-4-8", label: "Opus 4.8", blurb: "Smartest. Slower, pricier on API." },
-  { id: "claude-sonnet-4-6", label: "Sonnet 4.6", blurb: "Balanced. Great default." },
-  { id: "claude-haiku-4-5", label: "Haiku 4.5", blurb: "Fastest & cheapest. Simple tasks." },
+  { id: "claude-opus-5-5", label: "Opus 5.5", blurb: "Smartest. Slower, pricier on API." },
+  { id: "claude-sonnet-5-5", label: "Sonnet 5.5", blurb: "Balanced. Great default." },
+  { id: "claude-haiku-5-5", label: "Haiku 5.5", blurb: "Fastest & cheapest. Simple tasks." },
 ];
 
 export function prettyModel(id: string): string {
@@ -47,7 +47,7 @@ ROUTING RULES:
 
 Be concise, direct, and warm. One-sentence responses are fine when that's all that's needed.`,
     allowedTools: ["Agent"],
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-5-5",
     isRouter: true,
   },
   comms: {
@@ -61,7 +61,7 @@ You help draft emails, messages, outreach, and replies.
 Your voice is clear, friendly, and professional. Offer 1-2 variants when useful.
 When given a rough intent, produce something the user could send verbatim.`,
     allowedTools: ["WebFetch"],
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-5-5",
   },
   content: {
     id: "content",
@@ -74,7 +74,7 @@ You help plan YouTube videos, write scripts, brainstorm hooks,
 outline posts, and come up with titles. Bias toward specific, concrete ideas
 over vague advice. When drafting a script, use short lines and a natural speaking rhythm.`,
     allowedTools: ["WebSearch", "WebFetch"],
-    model: "claude-opus-4-8",
+    model: "claude-opus-5-5",
   },
   ops: {
     id: "ops",
@@ -88,7 +88,7 @@ When asked about "my notes" or "my project", look at what's actually there.
 Summarize clearly. Never modify files. If the user asks for a change, describe what you would change
 and let them know Main or the user themselves should make the edit.`,
     allowedTools: ["Read", "Glob", "Grep"],
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-5-5",
   },
 };
 

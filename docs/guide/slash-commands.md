@@ -19,8 +19,8 @@ Type `/` as the first character in the composer. A popover opens above it listin
 | `/agents` | Lists all agents with their descriptions and default models. |
 | `/model` | Shows the current model plus the available options. |
 | `/model <id>` | Switches the model for this agent. Accepts `opus`, `sonnet`, or `haiku`. |
-| `/think hard` | Switches this agent to Opus 4.8 for more careful reasoning. |
-| `/think fast` | Switches this agent to Haiku 4.5 for snappy, cheap replies. |
+| `/think hard` | Switches this agent to Opus 5.5 for more careful reasoning. |
+| `/think fast` | Switches this agent to Haiku 5.5 for snappy, cheap replies. |
 | `/think default` | Resets this agent to its configured default model. |
 | `/plan on` | Turns on plan mode (a read-only run) for this agent. |
 | `/plan off` | Turns plan mode back off. |

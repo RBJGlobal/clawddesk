@@ -20,7 +20,7 @@ cd clawddesk
 npm install
 ```
 
-You need Node.js 20 or newer (tested on 24.14.1).
+You need Node.js 22 or newer, since better-sqlite3 13 requires it (tested on 24.22.1).
 
 **2. Pick an authentication path.** You need one of these two.
 
