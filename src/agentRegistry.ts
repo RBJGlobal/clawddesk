@@ -6,13 +6,15 @@ export function allAgents(): AgentConfig[] {
   return [...AGENT_LIST, ...listCustomAgents()];
 }
 
+// Object.hasOwn so ids like "constructor" (reachable through
+// Object.prototype on a plain-object map) never resolve to a built-in.
 export function findAgent(id: string): AgentConfig | undefined {
-  if (AGENTS[id]) return AGENTS[id];
+  if (Object.hasOwn(AGENTS, id)) return AGENTS[id];
   return findCustomAgent(id);
 }
 
 export function isBuiltInAgent(id: string): boolean {
-  return !!AGENTS[id];
+  return Object.hasOwn(AGENTS, id);
 }
 
 /**

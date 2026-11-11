@@ -1198,11 +1198,17 @@ async function runTask(id) {
 
 async function deleteTask(id) {
   try {
-    await fetch(`/api/task/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/task/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      // 409 = the task is running. Keep the card; say why.
+      const data = await res.json().catch(() => ({}));
+      alert("Could not delete task: " + (data.error || `HTTP ${res.status}`));
+      return;
+    }
     state.tasks = state.tasks.filter((t) => t.id !== id);
     renderTasks();
-  } catch {
-    /* no-op */
+  } catch (err) {
+    alert("Could not delete task: " + err.message);
   }
 }
 

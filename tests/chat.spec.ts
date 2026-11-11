@@ -30,14 +30,25 @@ test.describe("ClawdDesk — chat against real SDK @engine", () => {
     await page.locator("#tasks-btn").click();
     await expect(page.locator("#tasks-modal")).toBeVisible();
 
-    await page.locator("#task-description").fill("Draft a quick thank-you email to a client");
+    // Unique tag so this run finds its own card (the board sorts oldest
+    // first, so an unqualified `.first()` could be a stale card from an
+    // earlier failed run) and so cleanup can target it by id even on failure.
+    const tag = `ref qa-${Date.now()}`;
+    const description = `Draft a quick thank-you email to a client (${tag})`;
+    await page.locator("#task-description").fill(description);
     await page.locator("#task-create-btn").click();
 
-    const card = page.locator(".task-card").first();
-    await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(card.locator(".task-card-agent")).toContainText("Comms", { timeout: 30_000 });
-
-    // Clean up
-    await card.locator("button", { hasText: "Delete" }).click();
+    try {
+      const card = page.locator(".task-card", { hasText: tag }).first();
+      await expect(card).toBeVisible({ timeout: 30_000 });
+      await expect(card.locator(".task-card-agent")).toContainText("Comms", { timeout: 30_000 });
+    } finally {
+      const tasks = await (await page.request.get("/api/tasks")).json();
+      for (const t of tasks as Array<{ id: string; description?: string }>) {
+        if (!t.description?.includes(tag)) continue;
+        const del = await page.request.delete(`/api/task/${t.id}`);
+        expect(del.ok()).toBeTruthy(); // a leak must fail loudly, not pile up rows
+      }
+    }
   });
 });

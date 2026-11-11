@@ -326,25 +326,28 @@ test.describe("ClawdDesk — new features smoke (no engine)", () => {
     expect(found).toBeDefined();
     expect(found.status).toBe("queued");
 
-    // Cleanup: hard-cancel via raw API would need a /cancel route which doesn't
-    // exist; we leave the row. pruneCompletedTasks only touches terminal rows,
-    // and the kanban surfaces only the most recent so this stays out of the way.
-    // Tracked: future tests should add a /cancel route or accept the leftover.
+    // Cleanup: queued rows are deletable since 2026-11-11.
+    const del = await request.delete(`http://localhost:3333/api/task/${task.id}`);
+    expect(del.ok()).toBeTruthy();
   });
 
-  test("C16b — DELETE on queued task returns 409 with current state", async ({ request }) => {
-    // Reviewer R2 fix: hard-delete is constrained to terminal states.
+  test("C16b — DELETE on queued task removes it", async ({ request }) => {
+    // Since 2026-11-11 a queued row may be hard-deleted: it has no worker, and
+    // checkoutById claims rows atomically, so the delete either wins or loses
+    // the race cleanly. Only active (checked-out) rows still answer 409.
+    // (Before, this case 409'd and the UI silently kept stale cards.)
     const created = await request.post("http://localhost:3333/api/task", {
       data: { description: "C16b QA — delete-on-queued", priority: "low", agentId: "main" },
     });
     const task = await created.json();
+    expect(task.status).toBe("queued");
 
     const res = await request.delete(`http://localhost:3333/api/task/${task.id}`);
-    expect(res.status()).toBe(409);
-    const body = await res.json();
-    expect(body.error).toMatch(/terminal/i);
-    expect(body.task.id).toBe(task.id);
-    expect(body.task.status).toBe("queued");
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+
+    const list = await (await request.get("http://localhost:3333/api/tasks")).json();
+    expect(list.find((t: any) => t.id === task.id)).toBeUndefined();
   });
 
   test("C16b — DELETE on missing task is idempotent", async ({ request }) => {
