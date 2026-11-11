@@ -296,6 +296,7 @@ Respond with exactly ONE word: main, comms, content, or ops. No punctuation, no 
         systemPrompt,
         model: "claude-haiku-4-5",
         allowedTools: [],
+        permissionMode: "default" as const,
       },
     })) {
       const anyMsg = msg as any;
@@ -461,11 +462,24 @@ app.post("/api/chat", async (req, res) => {
       options: {
         ...agentToolOptions(agent),
         ...skillsOptionsFor(agent.id),
-        systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+        // Agent SDK 0.3.267+ records a bare-string systemPrompt at session
+        // start and ignores later changes on resume until compaction.
+        // augmentedSystemPrompt() is rebuilt every turn (memory, pins,
+        // personality, edited agent prompts), so opt out with snapshot:false.
+        systemPrompt: {
+          type: "custom" as const,
+          prompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+          snapshot: false,
+        },
         resume: resumeId,
         cwd: currentCwd,
         model: modelId,
-        ...(plan ? { permissionMode: "plan" as const } : {}),
+        // Agent SDK 0.3.286+ leaves an omitted permissionMode to Claude Code
+        // (a settings defaultMode, else possibly "auto", where a classifier
+        // may approve tools outside allowedTools). Pin "default" so the
+        // allowlist stays the only gate, as it was on 0.2.x. Same at every
+        // query() site below.
+        permissionMode: plan ? ("plan" as const) : ("default" as const),
         ...delegationOptions(subAgents),
         ...hooksOpt(buildBrowserGuardHook(agent.id)),
       },
@@ -611,13 +625,17 @@ app.post("/api/chat/stream", async (req, res) => {
       options: {
         ...agentToolOptions(agent),
         ...skillsOptionsFor(agent.id),
-        systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+        systemPrompt: {
+          type: "custom" as const,
+          prompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+          snapshot: false,
+        },
         resume: resumeId,
         cwd: currentCwd,
         model: modelId,
         includePartialMessages: true,
         abortController: ac,
-        ...(plan ? { permissionMode: "plan" as const } : {}),
+        permissionMode: plan ? ("plan" as const) : ("default" as const),
         ...delegationOptions(subAgents),
         ...hooksOpt(buildBrowserGuardHook(agent.id)),
       },
@@ -865,6 +883,7 @@ app.post("/api/mcp/:id/test", async (req, res) => {
       options: {
         mcpServers: singleServerConfig(server),
         allowedTools: [],
+        permissionMode: "default" as const,
         model: "claude-haiku-4-5",
         abortController: ac,
         maxTurns: 1,
@@ -898,7 +917,13 @@ app.post("/api/mcp/:id/test", async (req, res) => {
   res.json({
     name: status.name ?? server.name,
     status: status.status,
-    error: status.error,
+    // Since Agent SDK 0.3.142 servers connect in the background; alwaysLoad
+    // (mcpServers.ts) makes startup wait up to 5 s, so `pending` here means
+    // the server is slower than that, not broken.
+    error:
+      status.status === "pending" && !status.error
+        ? "still connecting after the 5 s startup wait; retry the test"
+        : status.error,
     tools: (status.tools ?? []).map((t: any) => ({ name: t.name, description: t.description })),
     serverInfo: status.serverInfo,
   });
@@ -1080,6 +1105,7 @@ app.post("/api/skills/propose", async (req, res) => {
         systemPrompt: DISTILL_SYSTEM_PROMPT,
         model: "claude-haiku-4-5",
         allowedTools: [],
+        permissionMode: "default" as const,
         cwd: currentCwd,
       },
     })) {
@@ -1320,10 +1346,14 @@ app.post("/api/task/:id/run", async (req, res) => {
       options: {
         ...agentToolOptions(agent),
         ...skillsOptionsFor(agent.id),
-        systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+        systemPrompt: {
+          type: "custom" as const,
+          prompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+          snapshot: false,
+        },
         cwd: currentCwd,
         model: effectiveModel(agent.id),
-        ...(plan ? { permissionMode: "plan" as const } : {}),
+        permissionMode: plan ? ("plan" as const) : ("default" as const),
         ...delegationOptions(subAgents),
         ...hooksOpt(mergeHooks(approvalHook, buildBrowserGuardHook(agent.id))),
       },
@@ -2037,10 +2067,14 @@ const fireScheduledTask: OnFire = async (
       options: {
         ...agentToolOptions(agent),
         ...skillsOptionsFor(agent.id),
-        systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+        systemPrompt: {
+          type: "custom" as const,
+          prompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+          snapshot: false,
+        },
         cwd: fireCwd,
         model: effectiveModel(agent.id),
-        ...(plan ? { permissionMode: "plan" as const } : {}),
+        permissionMode: plan ? ("plan" as const) : ("default" as const),
         ...delegationOptions(subAgents),
         ...hooksOpt(mergeHooks(scheduledHook, buildBrowserGuardHook(agent.id))),
       },
@@ -2503,11 +2537,15 @@ const onTelegramMessage = async (ctx: TelegramCtx): Promise<void> => {
       options: {
         ...agentToolOptions(agent),
         ...skillsOptionsFor(agent.id),
-        systemPrompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+        systemPrompt: {
+          type: "custom" as const,
+          prompt: augmentedSystemPrompt(agent.id, agent.systemPrompt),
+          snapshot: false,
+        },
         cwd: currentCwd,
         model: effectiveModel(agent.id),
         ...(resumeId ? { resume: resumeId } : {}),
-        ...(plan ? { permissionMode: "plan" as const } : {}),
+        permissionMode: plan ? ("plan" as const) : ("default" as const),
         ...delegationOptions(subAgents),
         ...hooksOpt(buildBrowserGuardHook(agent.id)),
       },

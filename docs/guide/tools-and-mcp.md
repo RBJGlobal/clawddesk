@@ -36,7 +36,7 @@ Each server gets a short `name` (1 to 40 characters, letters, digits, `_` or `-`
 
 Enable it, and the agent gains that server's read/list/write tools, namespaced under `mcp__filesystem`.
 
-**The Test button.** Next to each server is **Test**. It spins that one server up in isolation, reads the connection status the SDK reports, and aborts before the model takes a turn. You see connected or failed without spending a model call. Use it right after entering credentials to confirm the server actually comes up.
+**The Test button.** Next to each server is **Test**. It spins that one server up in isolation, reads the connection status the SDK reports, and aborts before the model takes a turn. You see connected or failed without spending a model call. A server that takes longer than five seconds to come up shows `pending` with a note to retry; that is the SDK's startup wait, not a failure. Use it right after entering credentials to confirm the server actually comes up.
 
 ## How it works
 
@@ -47,7 +47,7 @@ MCP config is stored per agent in SQLite (`data/lab.db`, [`src/mcpServers.ts`](.
 
 If an agent has no enabled servers, the `mcpServers` option is omitted entirely and the allowlist is passed through unchanged.
 
-The **Test** route uses `singleServerConfig()` to build a map for just one server, starts a `query()`, reads the connection state out of the SDK's `system.init` message (its `mcp_servers` field reports connected or failed per server), then aborts before any model turn. That is how it can verify a connection cheaply.
+The **Test** route uses `singleServerConfig()` to build a map for just one server, starts a `query()`, reads the connection state out of the SDK's `system.init` message (its `mcp_servers` field reports connected, failed, needs-auth or pending per server; ClawdDesk marks every server `alwaysLoad` so the SDK waits up to five seconds for it before that message), then aborts before any model turn. That is how it can verify a connection cheaply.
 
 ## Common questions
 

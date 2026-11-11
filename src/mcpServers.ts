@@ -57,10 +57,16 @@ export type McpServerRow = {
 };
 
 // SDK-shaped config for a single server (the value side of the mcpServers map).
+// `alwaysLoad: true` on every row: since Agent SDK 0.3.142 MCP servers connect
+// in the background and a slow one reports `pending` on turn 1 with its tools
+// absent. alwaysLoad restores the old contract (block startup up to the 5 s
+// connect timeout so the tools are present when the first prompt is built) and
+// keeps the tools out of tool-search deferral, which fits this lab's "make the
+// tool surface legible" goal. The connection-test route relies on it too.
 type SdkMcpConfig =
-  | { type: "stdio"; command: string; args?: string[]; env?: Record<string, string> }
-  | { type: "http"; url: string; headers?: Record<string, string> }
-  | { type: "sse"; url: string; headers?: Record<string, string> };
+  | { type: "stdio"; command: string; args?: string[]; env?: Record<string, string>; alwaysLoad: true }
+  | { type: "http"; url: string; headers?: Record<string, string>; alwaysLoad: true }
+  | { type: "sse"; url: string; headers?: Record<string, string>; alwaysLoad: true };
 
 const NAME_RE = /^[a-zA-Z0-9_-]{1,40}$/;
 
@@ -216,6 +222,7 @@ function toSdkConfig(s: McpServerRow): SdkMcpConfig {
   if (s.transport === "stdio") {
     return {
       type: "stdio",
+      alwaysLoad: true,
       command: s.command ?? "",
       ...(s.args.length ? { args: s.args } : {}),
       ...(Object.keys(s.env).length ? { env: s.env } : {}),
@@ -223,6 +230,7 @@ function toSdkConfig(s: McpServerRow): SdkMcpConfig {
   }
   return {
     type: s.transport,
+    alwaysLoad: true,
     url: s.url ?? "",
     ...(Object.keys(s.headers).length ? { headers: s.headers } : {}),
   };
